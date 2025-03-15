@@ -1122,7 +1122,7 @@ function showAllocationResults() {
         
         // 添加該班級的學生
         groupedByClass[className].forEach((student, index) => {
-            const tr = document.createElement('tr');
+        const tr = document.createElement('tr');
             
             // 檢查是否有未分配的項目
             const hasUnallocated = 
@@ -1149,25 +1149,25 @@ function showAllocationResults() {
             const longSleevePantsSize = student.longSleevePants !== "無庫存" ? student.longSleevePants : '未分配';
             const longSleevePantsSets = student.longSleevePants !== "無庫存" ? student.longSleevePantsSets : 0;
             
-            tr.innerHTML = `
-                <td>${student.class || ''}</td>
-                <td>${student.number || ''}</td>
-                <td>${student.name}</td>
-                <td>${student.gender}</td>
-                <td>${student.chest}</td>
-                <td>${student.waist}</td>
-                <td>${student.pantsLength}</td>
-                <td class="${shortSleeveShirtSize === '未分配' ? 'unallocated-cell' : ''}">${shortSleeveShirtSize}</td>
-                <td>${shortSleeveShirtSets}</td>
-                <td class="${shortSleevePantsSize === '未分配' ? 'unallocated-cell' : ''}">${shortSleevePantsSize}</td>
-                <td>${shortSleevePantsSets}</td>
-                <td class="${longSleeveShirtSize === '未分配' ? 'unallocated-cell' : ''}">${longSleeveShirtSize}</td>
-                <td>${longSleeveShirtSets}</td>
-                <td class="${longSleevePantsSize === '未分配' ? 'unallocated-cell' : ''}">${longSleevePantsSize}</td>
-                <td>${longSleevePantsSets}</td>
-            `;
-            tbody.appendChild(tr);
-        });
+        tr.innerHTML = `
+            <td>${student.class || ''}</td>
+            <td>${student.number || ''}</td>
+            <td>${student.name}</td>
+            <td>${student.gender}</td>
+            <td>${student.chest}</td>
+            <td>${student.waist}</td>
+            <td>${student.pantsLength}</td>
+            <td class="${student.shortSleeveShirtSecondAllocation ? 'second-allocation' : ''}">${shortSleeveShirtSize}</td>
+            <td class="${student.shortSleeveShirtSecondAllocation ? 'second-allocation' : ''}">${shortSleeveShirtSets}</td>
+            <td class="${student.shortSleevePantsSecondAllocation ? 'second-allocation' : ''}">${shortSleevePantsSize}</td>
+            <td class="${student.shortSleevePantsSecondAllocation ? 'second-allocation' : ''}">${shortSleevePantsSets}</td>
+            <td class="${student.longSleeveShirtSecondAllocation ? 'second-allocation' : ''}">${longSleeveShirtSize}</td>
+            <td class="${student.longSleeveShirtSecondAllocation ? 'second-allocation' : ''}">${longSleeveShirtSets}</td>
+            <td class="${student.longSleevePantsSecondAllocation ? 'second-allocation' : ''}">${longSleevePantsSize}</td>
+            <td class="${student.longSleevePantsSecondAllocation ? 'second-allocation' : ''}">${longSleevePantsSets}</td>
+        `;
+        tbody.appendChild(tr);
+    });
     });
     
     // 更新庫存摘要
@@ -1804,19 +1804,23 @@ function allocateFromReserved(student, uniformType, size) {
         return false;
     }
     
-    // 從預留庫存中分配
+    // 從預留庫存中分配，並標記為第二次分配
     if (uniformType === 'shortSleeveShirt') {
         student.shortSleeveShirt = size;
         student.shortSleeveShirtSets = setsPerStudent;
+        student.shortSleeveShirtSecondAllocation = true;  // 添加標記
     } else if (uniformType === 'shortSleevePants') {
         student.shortSleevePants = size;
         student.shortSleevePantsSets = setsPerStudent;
+        student.shortSleevePantsSecondAllocation = true;  // 添加標記
     } else if (uniformType === 'longSleeveShirt') {
         student.longSleeveShirt = size;
         student.longSleeveShirtSets = setsPerStudent;
+        student.longSleeveShirtSecondAllocation = true;  // 添加標記
     } else if (uniformType === 'longSleevePants') {
         student.longSleevePants = size;
         student.longSleevePantsSets = setsPerStudent;
+        student.longSleevePantsSecondAllocation = true;  // 添加標記
     }
     
     // 更新預留庫存

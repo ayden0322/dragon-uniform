@@ -248,4 +248,16 @@ h1 {
 #resultsTable td:nth-child(12),
 #resultsTable td:nth-child(14) {
     font-weight: 500;
+}
+
+/* 第二次分配的項目樣式 */
+.second-allocation {
+    position: relative;
+}
+
+.second-allocation::after {
+    content: "※";
+    color: #dc3545;
+    margin-left: 4px;
+    font-weight: bold;
 } 
