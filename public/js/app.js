@@ -1036,29 +1036,35 @@ function showAllocationResults() {
     
     // 解析班級名稱的函數
     function parseClassName(className) {
-        // 預設值
-        let year = 0;
-        let classNum = 0;
+        // 確保 className 是字串
+        if (typeof className !== 'string') {
+            console.warn('非字串的班級名稱:', className);
+            return { year: 0, classNum: 0 };
+        }
         
-        console.log(`解析班級名稱: ${className}`);
-        
-        // 嘗試解析 (一)年(一)班 格式
-        let match = className.match(/\(([一二三四五六七八九十]+)\)年\(([一二三四五六七八九十]+)\)班/);
-        
-        // 如果上面的格式不匹配，嘗試解析 一年三班 格式
+        const match = className.match(/^([一二三四五六])\s*年\s*(\d+)\s*班$/);
         if (!match) {
-            match = className.match(/([一二三四五六七八九十]+)年([一二三四五六七八九十]+)班/);
+            console.warn('無法解析的班級名稱格式:', className);
+            return { year: 0, classNum: 0 };
         }
         
-        if (match) {
-            year = chineseNumbers[match[1]] || 0;
-            classNum = chineseNumbers[match[2]] || 0;
-            console.log(`解析結果 - 年級: ${year}, 班級: ${classNum}`);
-        } else {
-            console.log(`無法解析班級名稱: ${className}`);
-        }
+        const chineseYear = match[1];
+        const classNum = parseInt(match[2], 10);
         
-        return { year, classNum };
+        // 將中文數字轉換為數值
+        const yearMap = {
+            '一': 1,
+            '二': 2,
+            '三': 3,
+            '四': 4,
+            '五': 5,
+            '六': 6
+        };
+        
+        return {
+            year: yearMap[chineseYear] || 0,
+            classNum: classNum
+        };
     }
     
     // 先根據班級和號碼排序
@@ -1283,24 +1289,35 @@ function exportToExcel() {
     
     // 解析班級名稱的函數（與 showAllocationResults 函數中相同）
     function parseClassName(className) {
-        // 預設值
-        let year = 0;
-        let classNum = 0;
+        // 確保 className 是字串
+        if (typeof className !== 'string') {
+            console.warn('非字串的班級名稱:', className);
+            return { year: 0, classNum: 0 };
+        }
         
-        // 嘗試解析 (一)年(一)班 格式
-        let match = className.match(/\(([一二三四五六七八九十]+)\)年\(([一二三四五六七八九十]+)\)班/);
-        
-        // 如果上面的格式不匹配，嘗試解析 一年三班 格式
+        const match = className.match(/^([一二三四五六])\s*年\s*(\d+)\s*班$/);
         if (!match) {
-            match = className.match(/([一二三四五六七八九十]+)年([一二三四五六七八九十]+)班/);
+            console.warn('無法解析的班級名稱格式:', className);
+            return { year: 0, classNum: 0 };
         }
         
-        if (match) {
-            year = chineseNumbers[match[1]] || 0;
-            classNum = chineseNumbers[match[2]] || 0;
-        }
+        const chineseYear = match[1];
+        const classNum = parseInt(match[2], 10);
         
-        return { year, classNum };
+        // 將中文數字轉換為數值
+        const yearMap = {
+            '一': 1,
+            '二': 2,
+            '三': 3,
+            '四': 4,
+            '五': 5,
+            '六': 6
+        };
+        
+        return {
+            year: yearMap[chineseYear] || 0,
+            classNum: classNum
+        };
     }
     
     // 先根據班級和號碼排序（使用與 showAllocationResults 函數相同的排序邏輯）
