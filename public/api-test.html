@@ -15,6 +15,11 @@
     
     <div>
         <h2>1. 測試配置API</h2>
+        <select id="configTypeSelect" class="form-select mb-2">
+            <option value="students">學生資料</option>
+            <option value="inventory">庫存資料</option>
+            <option value="adjustments">調整資料</option>
+        </select>
         <button id="saveConfigBtn">保存測試配置</button>
         <button id="loadConfigBtn">加載配置</button>
         <div>
@@ -46,20 +51,22 @@
         // 配置API測試
         document.getElementById('saveConfigBtn').addEventListener('click', async () => {
             try {
+                const configType = document.getElementById('configTypeSelect').value;
                 const testData = {
-                    testValue: 'API測試數據',
+                    testValue: `API測試數據 - ${configType}`,
                     timestamp: new Date().toISOString()
                 };
                 
-                console.log('發送保存配置API請求...');
-                const response = await fetch('/api/config/dragon/test', {
+                console.log(`發送保存配置API請求... (類型: ${configType})`);
+                const response = await fetch(`/api/config/dragon/${configType}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ data: testData })
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP錯誤 ${response.status}: ${await response.text()}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP錯誤 ${response.status}: ${errorText}`);
                 }
                 
                 const result = await response.json();
@@ -71,11 +78,13 @@
         
         document.getElementById('loadConfigBtn').addEventListener('click', async () => {
             try {
-                console.log('發送加載配置API請求...');
-                const response = await fetch('/api/config/dragon/test');
+                const configType = document.getElementById('configTypeSelect').value;
+                console.log(`發送加載配置API請求... (類型: ${configType})`);
+                const response = await fetch(`/api/config/dragon/${configType}`);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP錯誤 ${response.status}: ${await response.text()}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP錯誤 ${response.status}: ${errorText}`);
                 }
                 
                 const data = await response.json();
@@ -89,10 +98,32 @@
         document.getElementById('saveAllocationBtn').addEventListener('click', async () => {
             try {
                 const testData = {
-                    studentData: { students: [{ id: 1, name: '測試學生' }] },
-                    inventoryData: { inventory: [{ id: 1, size: 'M', count: 10 }] },
-                    adjustmentData: { adjustments: [] },
-                    results: { allocations: [{ studentId: 1, size: 'M' }] }
+                    studentData: { students: [{ id: 1, name: '測試學生', gender: '男', chestSize: 90, waistSize: 70, pantsLength: 65, shortSleeveShirtCount: 1, shortSleevePantsCount: 1, longSleeveShirtCount: 1, longSleevePantsCount: 1 }] },
+                    inventoryData: { 
+                        shortSleeveShirt: [{ size: 'M', count: 10 }],
+                        shortSleevePants: [{ size: 'M', count: 10 }],
+                        longSleeveShirt: [{ size: 'M', count: 10 }],
+                        longSleevePants: [{ size: 'M', count: 10 }]
+                    },
+                    adjustmentData: { 
+                        shortSleeveShirt: [{ size: 'M', adjustedCount: 10 }],
+                        shortSleevePants: [{ size: 'M', adjustedCount: 10 }],
+                        longSleeveShirt: [{ size: 'M', adjustedCount: 10 }],
+                        longSleevePants: [{ size: 'M', adjustedCount: 10 }]
+                    },
+                    results: { 
+                        allocations: [{ 
+                            studentId: 1, 
+                            shortSleeveShirt: { size: 'M', success: true }, 
+                            shortSleevePants: { size: 'M', success: true },
+                            longSleeveShirt: { size: 'M', success: true },
+                            longSleevePants: { size: 'M', success: true }
+                        }],
+                        summary: {
+                            totalStudents: 1,
+                            successfulAllocations: 1
+                        }
+                    }
                 };
                 
                 console.log('發送保存分配API請求...');
@@ -103,7 +134,8 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP錯誤 ${response.status}: ${await response.text()}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP錯誤 ${response.status}: ${errorText}`);
                 }
                 
                 const result = await response.json();
@@ -119,7 +151,8 @@
                 const response = await fetch('/api/allocation/dragon/history');
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP錯誤 ${response.status}: ${await response.text()}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP錯誤 ${response.status}: ${errorText}`);
                 }
                 
                 const data = await response.json();
