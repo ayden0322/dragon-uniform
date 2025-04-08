@@ -1,0 +1,10 @@
+{
+  "schoolId": "dragon",
+  "configType": "inventory",
+  "data": {
+    "shortSleeveShirt": {
+      "M/38": 10
+    }
+  },
+  "updatedAt": "2025-04-08T06:35:05.561Z"
+}

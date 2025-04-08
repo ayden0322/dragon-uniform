@@ -1,0 +1,17 @@
+{
+  "schoolId": "dragon",
+  "configType": "students",
+  "data": {
+    "students": [
+      {
+        "id": "s001",
+        "name": "王小明"
+      },
+      {
+        "id": "s002",
+        "name": "李小華"
+      }
+    ]
+  },
+  "updatedAt": "2025-04-08T06:35:05.560Z"
+}

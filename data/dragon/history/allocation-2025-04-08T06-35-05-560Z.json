@@ -1,0 +1,31 @@
+{
+  "schoolId": "dragon",
+  "allocationDate": "2025-04-08T06:35:05.560Z",
+  "studentCount": 2,
+  "inventorySnapshot": {
+    "shortSleeveShirt": {
+      "M/38": 10
+    }
+  },
+  "studentSnapshot": {
+    "students": [
+      {
+        "id": "s001",
+        "name": "王小明"
+      },
+      {
+        "id": "s002",
+        "name": "李小華"
+      }
+    ]
+  },
+  "adjustmentSnapshot": {},
+  "results": {
+    "s001": {
+      "shortSleeveShirt": "M/38"
+    },
+    "s002": {
+      "shortSleeveShirt": "M/38"
+    }
+  }
+}
