@@ -260,4 +260,55 @@ h1 {
     color: #dc3545;
     margin-left: 4px;
     font-weight: bold;
-} 
+}
+
+/* 優化庫存表格樣式 */
+#inventory .table {
+    max-width: 450px;
+    margin: 0 auto;
+}
+
+#inventory .table th {
+    background-color: #e9ecef;
+    font-weight: bold;
+    text-align: center;
+}
+
+#inventory .table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+#inventory .table th:first-child {
+    width: 40%;
+}
+
+#inventory .table th:last-child {
+    width: 60%;
+}
+
+#inventory .form-control.total-inventory {
+    width: 100px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+#inventory .card-body {
+    padding: 1.25rem 0.75rem;
+}
+
+/* 更緊湊的卡片佈局 */
+#inventory .card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+#inventory .card-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#inventory .table-responsive {
+    padding: 0 1rem;
+}
