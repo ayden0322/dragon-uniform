@@ -1205,8 +1205,10 @@ function getPantsLengthInCm(size) {
 }
 
 /**
- * 檢查長褲尺碼是否適合學生的褲長
- * 學生可接受的最小尺碼 = 學生褲長 - 2cm
+ * 檢查長褲尺寸與長袖上衣尺寸的階級差異
+ * @param {string} pantsSize - 長褲尺寸
+ * @param {string} shirtSize - 長袖上衣尺寸
+ * @returns {boolean} - 是否符合階級差異要求
  */
 function isPantsLengthAcceptable(studentPantsLength, pantsSize) {
     // 獲取尺碼對應的實際厘米數
@@ -1538,7 +1540,12 @@ function updateStudentDetailedResults() {
                     font-size: 0.9em;
                 }
             </style>
-            <h4>學生分配詳細結果</h4>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4>學生分配詳細結果</h4>
+                <button id="exportAllocationResultsBtn" class="btn btn-success">
+                    <i class="bi bi-file-excel me-1"></i>匯出Excel
+                </button>
+            </div>
             <div class="table-responsive">
                 <table id="studentDetailTable" class="table table-striped table-bordered">
                     <thead>
@@ -1566,10 +1573,22 @@ function updateStudentDetailedResults() {
             </div>
         `;
         
-        // 將新表格插入到尺寸分配結果表格之前
-        resultTab.insertBefore(detailSection, shortSleeveShirtTable.closest('.card'));
+        // 將新表格插入到結果標籤的內容開始處
+        const cardBody = resultTab.querySelector('.card-body');
+        if (cardBody) {
+            cardBody.insertBefore(detailSection, cardBody.firstChild);
+        } else {
+            // 如果找不到 card-body，則插入到結果標籤的開頭
+            resultTab.insertBefore(detailSection, resultTab.firstChild);
+        }
         
         detailTable = document.getElementById('studentDetailTable');
+        
+        // 添加匯出按鈕的事件監聽器
+        const exportBtn = document.getElementById('exportAllocationResultsBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', exportAllocationResultsToExcel);
+        }
     }
 
     // 獲取表格主體
@@ -2046,4 +2065,155 @@ function tryAllocateSize(student, size, requiredCount, inventory, allocatedField
     student[specialField] = false;
     decreaseInventory(inventory, size, requiredCount, inventoryType);
     return { success: true }; 
-} 
+}
+
+/**
+ * 將分配結果匯出到Excel
+ */
+function exportAllocationResultsToExcel() {
+    try {
+        // 創建一個新的工作簿
+        const workbook = XLSX.utils.book_new();
+
+        // 學生分配詳細結果工作表
+        const studentWorksheet = createStudentDetailWorksheet();
+        XLSX.utils.book_append_sheet(workbook, studentWorksheet, '學生分配詳細結果');
+
+        // 各制服類型分配結果工作表
+        const typeWorksheets = [
+            { id: 'shortSleeveShirtResultTable', name: '短衣分配結果' },
+            { id: 'shortSleevePantsResultTable', name: '短褲分配結果' },
+            { id: 'longSleeveShirtResultTable', name: '長衣分配結果' },
+            { id: 'longSleevePantsResultTable', name: '長褲分配結果' }
+        ];
+
+        typeWorksheets.forEach(({ id, name }) => {
+            const worksheet = createUniformTypeWorksheet(id);
+            if (worksheet) {
+                XLSX.utils.book_append_sheet(workbook, worksheet, name);
+            }
+        });
+
+        // 生成文件名稱
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+        const filename = `制服分配結果_${timestamp}.xlsx`;
+
+        // 下載Excel文件
+        XLSX.writeFile(workbook, filename);
+        showAlert('分配結果已成功匯出為Excel檔案', 'success');
+    } catch (error) {
+        console.error('匯出分配結果時發生錯誤:', error);
+        showAlert(`匯出失敗: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * 創建學生分配詳細結果工作表
+ * @returns {Object} XLSX工作表對象
+ */
+function createStudentDetailWorksheet() {
+    // 按照班級和座號排序學生數據
+    const sortedStudents = [...studentData].sort((a, b) => {
+        const classA = parseInt(a.class) || 0;
+        const classB = parseInt(b.class) || 0;
+        if (classA !== classB) return classA - classB;
+        
+        const numberA = parseInt(a.number) || 0;
+        const numberB = parseInt(b.number) || 0;
+        return numberA - numberB;
+    });
+
+    // 準備工作表數據
+    const data = [];
+    
+    // 添加標題行
+    data.push([
+        '序號', '班級', '號碼', '姓名', '性別', '胸圍', '腰圍', '褲長',
+        '短衣尺寸', '短衣件數', '短褲尺寸', '短褲件數',
+        '長衣尺寸', '長衣件數', '長褲尺寸', '長褲件數'
+    ]);
+
+    // 添加學生數據
+    sortedStudents.forEach((student, index) => {
+        // 處理各種制服的分配情況
+        let shortShirtSize = student.allocatedShirtSize || '-';
+        let shortPantsSize = student.allocatedPantsSize || '-';
+        let longShirtSize = student.allocatedLongShirtSize || '-';
+        let longPantsSize = student.allocatedLongPantsSize || '-';
+        
+        // 如果有分配失敗原因，直接顯示在對應欄位
+        if (student.allocationFailReason) {
+            if (student.allocationFailReason.shortSleeveShirt && !student.allocatedShirtSize) {
+                shortShirtSize = student.allocationFailReason.shortSleeveShirt;
+            }
+            if (student.allocationFailReason.shortSleevePants && !student.allocatedPantsSize) {
+                shortPantsSize = student.allocationFailReason.shortSleevePants;
+            }
+            if (student.allocationFailReason.longSleeveShirt && !student.allocatedLongShirtSize) {
+                longShirtSize = student.allocationFailReason.longSleeveShirt;
+            }
+            if (student.allocationFailReason.longSleevePants && !student.allocatedLongPantsSize) {
+                longPantsSize = student.allocationFailReason.longSleevePants;
+            }
+        }
+
+        // 添加學生行數據
+        data.push([
+            index + 1,
+            student.class || '',
+            String(student.number).padStart(2, '0') || '',
+            student.name || '',
+            student.gender || '',
+            student.chest || '',
+            student.waist || '',
+            student.pantsLength || '',
+            shortShirtSize,
+            student.allocatedShirtSize ? (student.shortSleeveShirtCount || 1) : '-',
+            shortPantsSize,
+            student.allocatedPantsSize ? (student.shortSleevePantsCount || 1) : '-',
+            longShirtSize,
+            student.allocatedLongShirtSize ? (student.longSleeveShirtCount || 1) : '-',
+            longPantsSize,
+            student.allocatedLongPantsSize ? (student.longSleevePantsCount || 1) : '-'
+        ]);
+    });
+
+    // 創建工作表
+    return XLSX.utils.aoa_to_sheet(data);
+}
+
+/**
+ * 創建制服類型分配結果工作表
+ * @param {string} tableId - 表格ID
+ * @returns {Object|null} XLSX工作表對象，如果表格不存在則返回null
+ */
+function createUniformTypeWorksheet(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return null;
+
+    // 獲取表格標題
+    const headers = [];
+    const headerRow = table.querySelector('thead tr');
+    if (headerRow) {
+        const headerCells = headerRow.querySelectorAll('th');
+        headerCells.forEach(cell => {
+            headers.push(cell.textContent.trim());
+        });
+    }
+
+    // 獲取表格數據
+    const data = [headers]; // 第一行是標題
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const rowData = [];
+        const cells = row.querySelectorAll('td');
+        cells.forEach(cell => {
+            rowData.push(cell.textContent.trim());
+        });
+        data.push(rowData);
+    });
+
+    // 創建工作表
+    return XLSX.utils.aoa_to_sheet(data);
+}
