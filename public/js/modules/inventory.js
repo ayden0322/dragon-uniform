@@ -298,10 +298,19 @@ export function updateSizeTable(type) {
             <td>${size}</td>
             <td>${total}</td>
             <td>${calculatedAllocatable}</td>
-            <td>
-                <input type="number" class="form-control manual-adjustment" 
-                    value="${manualAdjustment}" 
-                    min="0" max="${total}" data-original="${calculatedAllocatable}">
+            <td class="adjustment-cell">
+                <div class="input-group adjustment-group">
+                    <div class="input-group-prepend">
+                        <button type="button" class="btn btn-outline-primary decrement-btn">−</button>
+                    </div>
+                    <input type="number" class="form-control manual-adjustment" 
+                        value="${manualAdjustment}" 
+                        min="0" max="${total}" step="1" 
+                        data-original="${calculatedAllocatable}">
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-primary increment-btn">+</button>
+                    </div>
+                </div>
             </td>
             <td class="adjusted-allocatable">${adjustedAllocatable}</td>
             <td class="reserved">${reserved}</td>
@@ -311,6 +320,10 @@ export function updateSizeTable(type) {
 
         // 添加事件監聽器
         const input = row.querySelector('.manual-adjustment');
+        const incrementBtn = row.querySelector('.increment-btn');
+        const decrementBtn = row.querySelector('.decrement-btn');
+
+        // 數字輸入框事件監聽器
         input.addEventListener('input', function() {
             const value = parseInt(this.value) || 0;
             const max = parseInt(this.getAttribute('max')) || 0;
@@ -337,6 +350,29 @@ export function updateSizeTable(type) {
             
             // 保存手動調整到本地儲存
             saveToLocalStorage('manualAdjustments', manualAdjustments);
+        });
+
+        // 增加按鈕事件監聽器
+        incrementBtn.addEventListener('click', function() {
+            const currentValue = parseInt(input.value) || 0;
+            const max = parseInt(input.getAttribute('max')) || 0;
+            
+            if (currentValue < max) {
+                input.value = currentValue + 1;
+                // 觸發 input 事件以更新數據
+                input.dispatchEvent(new Event('input'));
+            }
+        });
+
+        // 減少按鈕事件監聽器
+        decrementBtn.addEventListener('click', function() {
+            const currentValue = parseInt(input.value) || 0;
+            
+            if (currentValue > 0) {
+                input.value = currentValue - 1;
+                // 觸發 input 事件以更新數據
+                input.dispatchEvent(new Event('input'));
+            }
         });
     }
 

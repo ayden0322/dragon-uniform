@@ -127,6 +127,51 @@ h1 {
     width: 80px;
 }
 
+/* 手動調整欄位樣式 */
+.manual-adjustment {
+    width: 45px;
+    text-align: center;
+    padding: 0.25rem 0.1rem;
+    border-radius: 0;
+    -webkit-appearance: auto;
+    -moz-appearance: auto;
+    appearance: auto;
+}
+
+.adjustment-group {
+    max-width: 120px;
+    margin: 0 auto;
+}
+
+.adjustment-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+    border-radius: 0;
+    font-weight: bold;
+}
+
+.adjustment-group .btn-outline-primary {
+    color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.adjustment-group .btn-outline-primary:hover {
+    color: #fff;
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    border-color: #0a58ca;
+}
+
+/* 去除輸入框的上下箭頭 (僅依賴我們自定義的按鈕) */
+.manual-adjustment::-webkit-inner-spin-button,
+.manual-adjustment::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.manual-adjustment[type=number] {
+    -moz-appearance: textfield;
+}
+
 /* 結果表格樣式 */
 #resultsTable td {
     vertical-align: middle;
