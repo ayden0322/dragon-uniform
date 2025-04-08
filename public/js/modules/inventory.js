@@ -21,6 +21,19 @@ export let manualAdjustments = {
 };
 
 /**
+ * 初始化庫存功能
+ */
+export function initInventoryFeatures() {
+    // 初始化庫存表格
+    initInventoryTables();
+    
+    // 綁定庫存匯入/匯出按鈕事件
+    document.getElementById('importInventoryBtn')?.addEventListener('click', handleInventoryImport);
+    document.getElementById('downloadInventoryTemplateBtn')?.addEventListener('click', downloadInventoryTemplate);
+    document.getElementById('clearInventoryDataBtn')?.addEventListener('click', confirmClearInventoryData);
+}
+
+/**
  * 初始化庫存表格
  */
 export function initInventoryTables() {
@@ -578,4 +591,252 @@ export function loadInventoryAndAdjustments() {
     if (savedAdjustments) {
         manualAdjustments = savedAdjustments;
     }
+}
+
+/**
+ * 處理庫存資料匯入
+ */
+function handleInventoryImport() {
+    // 創建檔案輸入元素
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.xlsx,.xls,.csv';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+    
+    // 監聽檔案選擇事件
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // 解析Excel數據
+                importInventoryFromWorkbook(workbook);
+            } catch (error) {
+                showAlert('error', `匯入失敗: ${error.message}`);
+                console.error('匯入錯誤:', error);
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+        
+        // 移除檔案輸入元素
+        document.body.removeChild(fileInput);
+    });
+    
+    // 觸發檔案選擇對話框
+    fileInput.click();
+}
+
+/**
+ * 從工作簿導入庫存數據
+ * @param {Object} workbook - XLSX 工作簿對象
+ */
+function importInventoryFromWorkbook(workbook) {
+    // 確認工作簿有工作表
+    if (workbook.SheetNames.length === 0) {
+        showAlert('error', '匯入失敗: Excel 檔案不包含任何工作表');
+        return;
+    }
+    
+    // 初始化用於保存匯入數據的臨時變數
+    const importedData = {
+        shortSleeveShirt: {},
+        shortSleevePants: {},
+        longSleeveShirt: {},
+        longSleevePants: {}
+    };
+    
+    // 檢查工作表是否存在
+    const sheetNames = ['短衣', '短褲', '長衣', '長褲'];
+    const typeMapping = {
+        '短衣': 'shortSleeveShirt',
+        '短褲': 'shortSleevePants',
+        '長衣': 'longSleeveShirt',
+        '長褲': 'longSleevePants'
+    };
+    
+    let importedSheets = 0;
+    
+    // 處理每個工作表
+    for (const sheetName of sheetNames) {
+        if (workbook.SheetNames.includes(sheetName)) {
+            const worksheet = workbook.Sheets[sheetName];
+            const sheetData = XLSX.utils.sheet_to_json(worksheet);
+            
+            // 處理工作表數據
+            const type = typeMapping[sheetName];
+            if (type && sheetData.length > 0) {
+                sheetData.forEach(row => {
+                    // 檢查數據是否符合預期格式
+                    if (row['尺寸'] && row['總數'] !== undefined) {
+                        const size = row['尺寸'];
+                        const total = parseInt(row['總數']) || 0;
+                        
+                        // 檢查尺寸是否有效
+                        if (SIZES.includes(size)) {
+                            importedData[type][size] = { total };
+                            importedSheets++;
+                        }
+                    }
+                });
+            }
+        }
+    }
+    
+    // 如果沒有匯入任何有效數據，顯示錯誤
+    if (importedSheets === 0) {
+        showAlert('error', '匯入失敗: 找不到有效的庫存數據');
+        return;
+    }
+    
+    // 更新庫存數據
+    inventoryData = importedData;
+    
+    // 保存到本地儲存
+    saveToLocalStorage('inventoryData', inventoryData);
+    
+    // 更新UI
+    const tableIds = [
+        'shortSleeveShirtTable',
+        'shortSleevePantsTable', 
+        'longSleeveShirtTable',
+        'longSleevePantsTable'
+    ];
+    
+    tableIds.forEach(tableId => {
+        loadInventoryData(tableId);
+    });
+    
+    // 更新分配比率
+    updateAllocationRatios();
+    
+    showAlert('success', '庫存數據匯入成功');
+}
+
+/**
+ * 下載庫存範本
+ */
+function downloadInventoryTemplate() {
+    // 創建工作簿
+    const workbook = XLSX.utils.book_new();
+    
+    // 為每種制服類型創建一個工作表
+    const types = [
+        { name: '短衣', id: 'shortSleeveShirt' },
+        { name: '短褲', id: 'shortSleevePants' },
+        { name: '長衣', id: 'longSleeveShirt' },
+        { name: '長褲', id: 'longSleevePants' }
+    ];
+    
+    // 為每種類型創建範本數據
+    types.forEach(type => {
+        const data = [];
+        
+        // 添加標題行
+        SIZES.forEach(size => {
+            data.push({
+                '尺寸': size,
+                '總數': 0
+            });
+        });
+        
+        // 創建工作表
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        
+        // 添加到工作簿
+        XLSX.utils.book_append_sheet(workbook, worksheet, type.name);
+    });
+    
+    // 下載工作簿
+    XLSX.writeFile(workbook, '庫存範本.xlsx');
+}
+
+/**
+ * 確認清除庫存數據
+ */
+function confirmClearInventoryData() {
+    if (confirm('確定要清除所有庫存數據嗎？此操作無法復原。')) {
+        clearInventoryData();
+    }
+}
+
+/**
+ * 清除庫存數據
+ */
+function clearInventoryData() {
+    // 重置庫存數據
+    inventoryData = {
+        shortSleeveShirt: {},
+        shortSleevePants: {},
+        longSleeveShirt: {},
+        longSleevePants: {}
+    };
+    
+    // 重置手動調整數據
+    manualAdjustments = {
+        shortSleeveShirt: {},
+        shortSleevePants: {},
+        longSleeveShirt: {},
+        longSleevePants: {}
+    };
+    
+    // 保存到本地儲存
+    saveToLocalStorage('inventoryData', inventoryData);
+    saveToLocalStorage('manualAdjustments', manualAdjustments);
+    
+    // 更新UI
+    const tableIds = [
+        'shortSleeveShirtTable',
+        'shortSleevePantsTable',
+        'longSleeveShirtTable',
+        'longSleevePantsTable'
+    ];
+    
+    tableIds.forEach(tableId => {
+        initInventoryTable(tableId);
+    });
+    
+    // 更新分配比率
+    updateAllocationRatios();
+    
+    showAlert('success', '所有庫存數據已清除');
+}
+
+/**
+ * 初始化單個庫存表格
+ * @param {string} tableId - 表格ID
+ */
+function initInventoryTable(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    // 清空表格
+    const tbody = table.querySelector('tbody');
+    tbody.innerHTML = '';
+
+    // 為每個尺寸添加行
+    SIZES.forEach(size => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${size}</td>
+            <td><input type="number" class="form-control total-inventory" min="0" value="0"></td>
+        `;
+        tbody.appendChild(row);
+
+        // 為輸入欄位添加事件監聽器
+        const totalInput = row.querySelector('.total-inventory');
+
+        // 更新庫存數據
+        totalInput.addEventListener('change', () => {
+            updateInventoryData(tableId, size, 'total', parseInt(totalInput.value) || 0);
+        });
+    });
 } 

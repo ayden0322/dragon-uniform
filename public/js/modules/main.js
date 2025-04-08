@@ -1,5 +1,5 @@
 // 主程式入口模組
-import { inventoryData, initInventoryTables, loadInventoryAndAdjustments } from './inventory.js';
+import { inventoryData, initInventoryFeatures, loadInventoryAndAdjustments } from './inventory.js';
 import { studentData, loadStudentData, updateAdjustmentPage } from './students.js';
 import { loadAllocationResults } from './allocation.js';
 import { setupImportExportButtons, setupTabEvents, setupAllocationButton, setupAdjustmentPageButtons, updateAllocationRatios } from './ui.js';
@@ -21,8 +21,8 @@ export function initApp() {
         // 不再載入分配結果，等用戶點擊「開始分配」按鈕時才載入
         // loadAllocationResults();
         
-        // 初始化庫存表格
-        initInventoryTables();
+        // 初始化庫存表格和功能
+        initInventoryFeatures();
         
         // 設置頁籤切換事件
         setupTabEvents();
