@@ -6,8 +6,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // 打印當前工作目錄和環境變量
-console.log('當前工作目錄:', process.cwd());
-console.log('環境變量 DATA_DIR:', process.env.DATA_DIR);
+console.log('主服務 - 當前工作目錄:', process.cwd());
+console.log('主服務 - 環境變量 DATA_DIR:', process.env.DATA_DIR);
 
 // 中間件設置
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -24,10 +24,11 @@ app.use((req, res, next) => {
 });
 
 // 確保data目錄存在
+// 在Zeabur上優先使用環境變量中的DATA_DIR
 const dataDir = process.env.DATA_DIR || path.join(__dirname, '../data');
-console.log('主服務使用的數據目錄:', dataDir);
+console.log('主服務 - 使用的數據目錄:', dataDir);
 if (!fs.existsSync(dataDir)) {
-    console.log('創建主數據目錄:', dataDir);
+    console.log('主服務 - 創建主數據目錄:', dataDir);
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
