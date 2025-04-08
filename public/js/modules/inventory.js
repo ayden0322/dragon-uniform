@@ -452,6 +452,7 @@ function updateTotalRow(type) {
  */
 export function saveManualAdjustments() {
     let hasWarning = false;
+    let warningMessages = [];
     
     // 遍歷所有制服類型並更新庫存資料
     for (const type in manualAdjustments) {
@@ -501,8 +502,10 @@ export function saveManualAdjustments() {
         const demand = demandData[type]?.totalDemand || 0;
         if (typeTotal < demand) {
             const uniformTypeName = UNIFORM_TYPES[type];
-            const message = `警告：${uniformTypeName}的可分配數總和(${typeTotal})小於需求量(${demand})，可能會導致部分學生無法分配到制服。`;
+            const shortfall = demand - typeTotal;
+            const message = `${uniformTypeName}：可分配數總和(${typeTotal})小於需求量(${demand})，差額${shortfall}件`;
             console.warn(message);
+            warningMessages.push(message);
             hasWarning = true;
         }
 
@@ -519,7 +522,14 @@ export function saveManualAdjustments() {
     
     // 顯示訊息
     if (hasWarning) {
-        showAlert('手動調整已保存，但有部分制服類型的可分配數小於需求量，請注意檢查。', 'warning', 5000);
+        const warningHTML = `
+            <div>手動調整已保存，但以下制服類型的可分配數小於需求量：</div>
+            <ul style="text-align:left; margin-top:8px; padding-left:20px;">
+                ${warningMessages.map(msg => `<li>${msg}</li>`).join('')}
+            </ul>
+            <div style="margin-top:5px;">請注意檢查並調整。</div>
+        `;
+        showAlert(warningHTML, 'warning', 8000);
     } else {
         showAlert('手動調整已保存', 'success');
     }

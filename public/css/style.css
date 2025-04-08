@@ -138,6 +138,25 @@ h1 {
     appearance: auto;
 }
 
+/* 警告訊息樣式 */
+#alertContainer .alert {
+    max-width: 600px;
+    margin: 0 auto 20px auto;
+}
+
+#alertContainer .alert-content {
+    display: inline-block;
+    text-align: left;
+}
+
+#alertContainer .alert ul {
+    margin-bottom: 0;
+}
+
+#alertContainer .alert li {
+    margin-bottom: 5px;
+}
+
 .adjustment-group {
     max-width: 120px;
     margin: 0 auto;

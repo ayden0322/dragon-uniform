@@ -2,7 +2,7 @@
 
 /**
  * 顯示警告提示
- * @param {string} message - 提示訊息
+ * @param {string} message - 提示訊息 (可以是HTML)
  * @param {string} type - 提示類型 (success, danger, warning, info)
  * @param {number} duration - 持續時間(毫秒)
  */
@@ -13,8 +13,10 @@ export function showAlert(message, type = 'info', duration = 3000) {
     // 設置提示樣式
     alertElement.className = `alert alert-${type} alert-dismissible fade show`;
     alertElement.role = 'alert';
+    
+    // 允許HTML內容
     alertElement.innerHTML = `
-        ${message}
+        <div class="alert-content">${message}</div>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
@@ -23,8 +25,15 @@ export function showAlert(message, type = 'info', duration = 3000) {
     
     // 設定自動消失
     setTimeout(() => {
-        const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
-        bsAlert.close();
+        try {
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
+            bsAlert.close();
+        } catch (e) {
+            // 如果Bootstrap Alert實例創建失敗，手動移除元素
+            if (alertElement.parentNode) {
+                alertElement.parentNode.removeChild(alertElement);
+            }
+        }
     }, duration);
 }
 
