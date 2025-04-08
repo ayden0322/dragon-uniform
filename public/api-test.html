@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API測試</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>API測試頁面</h1>
+    
+    <div>
+        <h2>1. 測試配置API</h2>
+        <button id="saveConfigBtn">保存測試配置</button>
+        <button id="loadConfigBtn">加載配置</button>
+        <div>
+            <pre id="configResult">結果將顯示在這裡...</pre>
+        </div>
+    </div>
+    
+    <div>
+        <h2>2. 測試分配API</h2>
+        <button id="saveAllocationBtn">保存測試分配結果</button>
+        <button id="loadHistoryBtn">加載分配歷史</button>
+        <div>
+            <pre id="allocationResult">結果將顯示在這裡...</pre>
+        </div>
+    </div>
+    
+    <script>
+        // 顯示結果函數
+        function displayResult(elementId, data) {
+            document.getElementById(elementId).textContent = JSON.stringify(data, null, 2);
+        }
+        
+        // 顯示錯誤函數
+        function displayError(elementId, error) {
+            document.getElementById(elementId).textContent = `錯誤: ${error.message}`;
+            console.error(error);
+        }
+        
+        // 配置API測試
+        document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+            try {
+                const testData = {
+                    testValue: 'API測試數據',
+                    timestamp: new Date().toISOString()
+                };
+                
+                console.log('發送保存配置API請求...');
+                const response = await fetch('/api/config/dragon/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: testData })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP錯誤 ${response.status}: ${await response.text()}`);
+                }
+                
+                const result = await response.json();
+                displayResult('configResult', result);
+            } catch (error) {
+                displayError('configResult', error);
+            }
+        });
+        
+        document.getElementById('loadConfigBtn').addEventListener('click', async () => {
+            try {
+                console.log('發送加載配置API請求...');
+                const response = await fetch('/api/config/dragon/test');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP錯誤 ${response.status}: ${await response.text()}`);
+                }
+                
+                const data = await response.json();
+                displayResult('configResult', data);
+            } catch (error) {
+                displayError('configResult', error);
+            }
+        });
+        
+        // 分配API測試
+        document.getElementById('saveAllocationBtn').addEventListener('click', async () => {
+            try {
+                const testData = {
+                    studentData: { students: [{ id: 1, name: '測試學生' }] },
+                    inventoryData: { inventory: [{ id: 1, size: 'M', count: 10 }] },
+                    adjustmentData: { adjustments: [] },
+                    results: { allocations: [{ studentId: 1, size: 'M' }] }
+                };
+                
+                console.log('發送保存分配API請求...');
+                const response = await fetch('/api/allocation/dragon', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP錯誤 ${response.status}: ${await response.text()}`);
+                }
+                
+                const result = await response.json();
+                displayResult('allocationResult', result);
+            } catch (error) {
+                displayError('allocationResult', error);
+            }
+        });
+        
+        document.getElementById('loadHistoryBtn').addEventListener('click', async () => {
+            try {
+                console.log('發送加載分配歷史API請求...');
+                const response = await fetch('/api/allocation/dragon/history');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP錯誤 ${response.status}: ${await response.text()}`);
+                }
+                
+                const data = await response.json();
+                displayResult('allocationResult', data);
+            } catch (error) {
+                displayError('allocationResult', error);
+            }
+        });
+    </script>
+</body>
+</html>
