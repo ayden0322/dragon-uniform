@@ -14,6 +14,14 @@
     <h1>API測試頁面</h1>
     
     <div>
+        <h2>0. 服務器環境檢查</h2>
+        <button id="checkEnvBtn">檢查服務器環境</button>
+        <div>
+            <pre id="envResult">結果將顯示在這裡...</pre>
+        </div>
+    </div>
+    
+    <div>
         <h2>1. 測試配置API</h2>
         <select id="configTypeSelect" class="form-select mb-2">
             <option value="students">學生資料</option>
@@ -47,6 +55,24 @@
             document.getElementById(elementId).textContent = `錯誤: ${error.message}`;
             console.error(error);
         }
+        
+        // 環境檢查
+        document.getElementById('checkEnvBtn').addEventListener('click', async () => {
+            try {
+                console.log('檢查服務器環境...');
+                const response = await fetch('/api/check-env');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP錯誤 ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                displayResult('envResult', result);
+            } catch (error) {
+                displayError('envResult', error);
+            }
+        });
         
         // 配置API測試
         document.getElementById('saveConfigBtn').addEventListener('click', async () => {
