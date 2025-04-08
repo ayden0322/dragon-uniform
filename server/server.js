@@ -8,6 +8,17 @@ const port = process.env.PORT || 3000;
 // 中間件設置
 app.use(bodyParser.json({ limit: '10mb' }));
 
+// 允許CORS（在生產環境中可以設置更嚴格的規則）
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 // 確保data目錄存在
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) {
@@ -33,6 +44,6 @@ app.get('/:schoolId', (req, res) => {
 });
 
 // 啟動伺服器
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`學生制服自動分配系統伺服器運行在 http://localhost:${port}`);
 });

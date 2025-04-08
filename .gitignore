@@ -1,6 +1,9 @@
 # 依賴項目目錄
 node_modules/
 
+# 數據存儲目錄
+data/
+
 # 日誌文件
 logs
 *.log
