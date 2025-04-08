@@ -82,6 +82,14 @@ export function updateInventoryData(tableId, size, field, value) {
     if (!inventoryData[type][size]) {
         inventoryData[type][size] = { total: 0 };
     }
+    
+    // 檢查是否更新總數，如果是則清除該尺寸的手動調整值
+    if (field === 'total' && manualAdjustments[type] && manualAdjustments[type][size] !== undefined) {
+        // 清除該尺寸的手動調整值
+        delete manualAdjustments[type][size];
+        // 保存到本地儲存
+        saveToLocalStorage('manualAdjustments', manualAdjustments);
+    }
 
     // 更新指定欄位
     inventoryData[type][size][field] = value;
@@ -163,24 +171,21 @@ export function calculateReservedQuantities(inventoryData, demandData, manualAdj
     for (const type in inventoryData) {
         if (!inventoryData.hasOwnProperty(type)) continue;
         
-        // 獲取分配比例
-        const ratioElem = document.getElementById(`${type}Ratio`);
-        let ratio = 0;
-        if (ratioElem) {
-            // 從百分比字符串中提取數值（如"85.5%"變為0.855）
-            const percentText = ratioElem.textContent || '0%';
-            ratio = parseFloat(percentText) / 100 || 0;
-            
-            // 如果比例大於1，則限制為1（即100%）
-            ratio = Math.min(ratio, 1);
-        } else if (demandData && demandData[type]) {
-            // 如果無法從 DOM 獲取，則回退到計算
-            const totalDemand = demandData[type].totalDemand || 0;
-            const totalInventorySum = calculateTotalInventory(inventoryData[type]);
-            
-            if (totalDemand > 0 && totalInventorySum > 0) {
-                ratio = Math.min(totalDemand / totalInventorySum, 1);
+        // 計算總庫存
+        let totalInventory = 0;
+        for (const size in inventoryData[type]) {
+            if (inventoryData[type].hasOwnProperty(size)) {
+                totalInventory += inventoryData[type][size].total || 0;
             }
+        }
+        
+        // 獲取需求量
+        const demand = demandData[type]?.totalDemand || 0;
+        
+        // 計算分配比例
+        let ratio = 0;
+        if (totalInventory > 0 && demand > 0) {
+            ratio = demand / totalInventory;
         }
         
         // 計算每個尺寸
@@ -268,7 +273,7 @@ export function updateSizeTable(type) {
         // 使用比例計算可分配數（改為四捨五入）
         const calculatedAllocatable = Math.round(total * ratio);
         
-        // 檢查是否有手動調整
+        // 檢查是否有手動調整，如果沒有則使用計算的可分配數
         let manualAdjustment = calculatedAllocatable;
         let adjustedAllocatable = calculatedAllocatable;
         
@@ -282,6 +287,7 @@ export function updateSizeTable(type) {
         // 更新總數
         totalInventory += total;
         totalCalculatedAllocatable += calculatedAllocatable;
+        totalManualAdjustment += manualAdjustment;
         totalAdjustedAllocatable += adjustedAllocatable;
         totalReserved += reserved;
 
@@ -325,9 +331,12 @@ export function updateSizeTable(type) {
             const row = this.closest('tr');
             row.querySelector('.adjusted-allocatable').textContent = value;
             row.querySelector('.reserved').textContent = total - value;
-
-            // 重新計算總數
-            updateTotalRow(type);
+            
+            // 直接更新總計行（立即反映變更）
+            manualUpdateTotalRow(type, table);
+            
+            // 保存手動調整到本地儲存
+            saveToLocalStorage('manualAdjustments', manualAdjustments);
         });
     }
 
@@ -338,11 +347,68 @@ export function updateSizeTable(type) {
         <td><strong>總計</strong></td>
         <td><strong>${totalInventory}</strong></td>
         <td><strong>${totalCalculatedAllocatable}</strong></td>
-        <td><strong>${totalAdjustedAllocatable}</strong></td>
+        <td><strong>${totalManualAdjustment}</strong></td>
         <td><strong>${totalAdjustedAllocatable}</strong></td>
         <td><strong>${totalReserved}</strong></td>
     `;
     tbody.appendChild(totalRow);
+}
+
+/**
+ * 手動更新總計行（直接從表格中讀取數據）
+ * @param {string} type - 制服類型
+ * @param {HTMLElement} table - 表格元素
+ */
+function manualUpdateTotalRow(type, table) {
+    if (!table) {
+        table = document.getElementById(`${type}AdjustTable`);
+        if (!table) return;
+    }
+    
+    const rows = Array.from(table.querySelectorAll('tbody tr:not(.total-row)'));
+    if (rows.length === 0) return;
+    
+    let totalInventory = 0;
+    let totalCalculatedAllocatable = 0;
+    let totalManualAdjustment = 0;
+    let totalAdjustedAllocatable = 0;
+    let totalReserved = 0;
+    
+    rows.forEach(row => {
+        const cells = row.cells;
+        totalInventory += parseInt(cells[1].textContent) || 0;
+        totalCalculatedAllocatable += parseInt(cells[2].textContent) || 0;
+        
+        // 獲取手動調整值
+        const manualInput = cells[3].querySelector('input');
+        if (manualInput) {
+            totalManualAdjustment += parseInt(manualInput.value) || 0;
+        }
+        
+        totalAdjustedAllocatable += parseInt(cells[4].textContent) || 0;
+        totalReserved += parseInt(cells[5].textContent) || 0;
+    });
+    
+    // 更新總計行
+    const totalRow = table.querySelector('.total-row');
+    if (totalRow) {
+        totalRow.innerHTML = `
+            <td><strong>總計</strong></td>
+            <td><strong>${totalInventory}</strong></td>
+            <td><strong>${totalCalculatedAllocatable}</strong></td>
+            <td><strong>${totalManualAdjustment}</strong></td>
+            <td><strong>${totalAdjustedAllocatable}</strong></td>
+            <td><strong>${totalReserved}</strong></td>
+        `;
+    }
+}
+
+/**
+ * 更新總計行 - 用於向後兼容
+ * @param {string} type - 制服類型
+ */
+function updateTotalRow(type) {
+    manualUpdateTotalRow(type);
 }
 
 /**
@@ -465,54 +531,5 @@ export function loadInventoryAndAdjustments() {
     const savedAdjustments = loadFromLocalStorage('manualAdjustments', null);
     if (savedAdjustments) {
         manualAdjustments = savedAdjustments;
-    }
-}
-
-// 修改：更新總數列時的計算邏輯
-function updateTotalRow(type) {
-    const table = document.getElementById(`${type}AdjustTable`);
-    if (!table) return;
-
-    let totalInventory = 0;
-    let totalCalculatedAllocatable = 0;
-    let totalManualAdjustment = 0;
-    let totalAdjustedAllocatable = 0;
-    let totalReserved = 0;
-
-    // 獲取所有非總數列的行
-    const rows = Array.from(table.querySelectorAll('tbody tr:not(.total-row)'));
-    
-    rows.forEach(row => {
-        const cells = row.cells;
-        const size = row.dataset.size;
-        const total = parseInt(cells[1].textContent) || 0;
-        const calculatedAllocatable = parseInt(cells[2].textContent) || 0;
-        const manualInput = cells[3].querySelector('input');
-        
-        // 檢查是否有手動調整值
-        let adjustedValue;
-        if (manualAdjustments[type] && manualAdjustments[type][size] !== undefined) {
-            adjustedValue = manualAdjustments[type][size];
-        } else {
-            adjustedValue = calculatedAllocatable;
-        }
-
-        totalInventory += total;
-        totalCalculatedAllocatable += calculatedAllocatable;
-        totalAdjustedAllocatable += adjustedValue;
-        totalReserved += (total - adjustedValue);
-    });
-
-    // 更新總數列
-    const totalRow = table.querySelector('.total-row');
-    if (totalRow) {
-        totalRow.innerHTML = `
-            <td><strong>總計</strong></td>
-            <td><strong>${totalInventory}</strong></td>
-            <td><strong>${totalCalculatedAllocatable}</strong></td>
-            <td><strong>${totalAdjustedAllocatable}</strong></td>
-            <td><strong>${totalAdjustedAllocatable}</strong></td>
-            <td><strong>${totalReserved}</strong></td>
-        `;
     }
 } 

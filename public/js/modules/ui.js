@@ -239,8 +239,18 @@ export function updateAllocationRatios() {
             longSleevePants: document.getElementById('longSleevePantsRatio')
         };
         
+        // 記錄比例是否變更
+        let ratioChanged = false;
+        const oldRatios = {};
+        
         for (const type in ratioElements) {
             if (!ratioElements[type]) continue;
+            
+            // 儲存舊的比例值用於比較
+            if (ratioElements[type]) {
+                const oldPercentText = ratioElements[type].textContent || '0%';
+                oldRatios[type] = parseFloat(oldPercentText) / 100 || 0;
+            }
             
             // 直接從 demandData 獲取需求數量，而不是從 DOM 元素獲取
             let demand = 0;
@@ -270,6 +280,11 @@ export function updateAllocationRatios() {
                 ratio = demand / totalInventory;
             }
             
+            // 檢查比例是否變更
+            if (Math.abs(ratio - oldRatios[type]) > 0.0001) {
+                ratioChanged = true;
+            }
+            
             // 格式化顯示
             const formattedRatio = (ratio * 100).toFixed(1) + '%';
             
@@ -286,15 +301,11 @@ export function updateAllocationRatios() {
             }
         }
         
-        // 在更新了所有比例後，更新當前顯示的尺寸表格
-        // 獲取當前活動的標籤
-        const activeTab = document.querySelector('#sizeTabs .nav-link.active');
-        if (activeTab) {
-            const targetType = activeTab.getAttribute('data-target-type');
-            if (targetType) {
-                updateSizeTable(targetType);
-            }
-        }
+        // 在更新了所有比例後，始終更新所有尺寸表格
+        updateSizeTable('shortSleeveShirt');
+        updateSizeTable('shortSleevePants');
+        updateSizeTable('longSleeveShirt');
+        updateSizeTable('longSleevePants');
     } catch (error) {
         console.error('更新分配比率時發生錯誤:', error);
     }
