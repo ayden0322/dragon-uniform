@@ -118,3 +118,82 @@ exports.getAllocationDetail = (req, res) => {
         res.status(500).json({ error: '獲取分配詳細信息失敗' });
     }
 };
+
+// 修改上衣分配邏輯
+function allocateShirts(students, inventory) {
+  // 計算有效胸圍並排序
+  const sortedStudents = students.map(student => {
+    const effectiveChest = student.waist > student.chest ? student.waist : student.chest;
+    return { ...student, effectiveChest };
+  }).sort((a, b) => {
+    if (a.effectiveChest === b.effectiveChest) {
+      return a.pantsLength - b.pantsLength; // 褲長較短的優先
+    }
+    return a.effectiveChest - b.effectiveChest;
+  });
+
+  // 分配上衣
+  const allocations = sortedStudents.map(student => {
+    const shirt = inventory.shirts.find(s => s.size === student.shirtSize);
+    return {
+      studentId: student.id,
+      shirtSize: student.shirtSize,
+      allocated: shirt ? true : false,
+      shirtId: shirt ? shirt.id : null
+    };
+  });
+
+  return allocations;
+}
+
+// 修改短褲分配邏輯
+function allocatePants(students, inventory) {
+  // 直接使用腰圍進行排序
+  const sortedStudents = students.map(student => {
+    return { ...student, effectiveWaist: student.waist };
+  }).sort((a, b) => {
+    if (a.effectiveWaist === b.effectiveWaist) {
+      return a.chest - b.chest; // 胸圍越小的優先
+    }
+    return a.effectiveWaist - b.effectiveWaist;
+  });
+
+  // 分配短褲
+  const allocations = sortedStudents.map(student => {
+    const pants = inventory.pants.find(p => p.size === student.pantsSize);
+    return {
+      studentId: student.id,
+      pantsSize: student.pantsSize,
+      allocated: pants ? true : false,
+      pantsId: pants ? pants.id : null
+    };
+  });
+
+  return allocations;
+}
+
+// 修改長褲分配邏輯
+function allocateLongPants(students, inventory) {
+  // 直接使用腰圍進行排序
+  const sortedStudents = students.map(student => {
+    return { ...student, effectiveWaist: student.waist };
+  }).sort((a, b) => {
+    if (a.effectiveWaist === b.effectiveWaist) {
+      return a.pantsLength - b.pantsLength; // 褲長較短的優先
+    }
+    return a.effectiveWaist - b.effectiveWaist;
+  });
+
+  // 分配長褲
+  const allocations = sortedStudents.map(student => {
+    const pants = inventory.longPants.find(p => p.size === student.longPantsSize);
+    return {
+      studentId: student.id,
+      longPantsSize: student.longPantsSize,
+      allocated: pants ? true : false,
+      longPantsId: pants ? pants.id : null
+    };
+  });
+
+  return allocations;
+}
