@@ -148,10 +148,9 @@ function allocateShirts(students, inventory) {
 
 // 修改短褲分配邏輯
 function allocatePants(students, inventory) {
-  // 計算有效腰圍並排序
+  // 直接使用腰圍進行排序
   const sortedStudents = students.map(student => {
-    const effectiveWaist = student.chest > student.waist ? student.chest : student.waist;
-    return { ...student, effectiveWaist };
+    return { ...student, effectiveWaist: student.waist };
   }).sort((a, b) => {
     if (a.effectiveWaist === b.effectiveWaist) {
       return a.chest - b.chest; // 胸圍越小的優先
