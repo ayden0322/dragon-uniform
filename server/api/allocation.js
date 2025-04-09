@@ -171,3 +171,29 @@ function allocatePants(students, inventory) {
 
   return allocations;
 }
+
+// 修改長褲分配邏輯
+function allocateLongPants(students, inventory) {
+  // 直接使用腰圍進行排序
+  const sortedStudents = students.map(student => {
+    return { ...student, effectiveWaist: student.waist };
+  }).sort((a, b) => {
+    if (a.effectiveWaist === b.effectiveWaist) {
+      return a.pantsLength - b.pantsLength; // 褲長較短的優先
+    }
+    return a.effectiveWaist - b.effectiveWaist;
+  });
+
+  // 分配長褲
+  const allocations = sortedStudents.map(student => {
+    const pants = inventory.longPants.find(p => p.size === student.longPantsSize);
+    return {
+      studentId: student.id,
+      longPantsSize: student.longPantsSize,
+      allocated: pants ? true : false,
+      longPantsId: pants ? pants.id : null
+    };
+  });
+
+  return allocations;
+}
