@@ -118,3 +118,30 @@ exports.getAllocationDetail = (req, res) => {
         res.status(500).json({ error: '獲取分配詳細信息失敗' });
     }
 };
+
+// 修改上衣分配邏輯
+function allocateShirts(students, inventory) {
+  // 計算有效胸圍並排序
+  const sortedStudents = students.map(student => {
+    const effectiveChest = student.waist > student.chest ? student.waist : student.chest;
+    return { ...student, effectiveChest };
+  }).sort((a, b) => {
+    if (a.effectiveChest === b.effectiveChest) {
+      return a.pantsLength - b.pantsLength; // 褲長較短的優先
+    }
+    return a.effectiveChest - b.effectiveChest;
+  });
+
+  // 分配上衣
+  const allocations = sortedStudents.map(student => {
+    const shirt = inventory.shirts.find(s => s.size === student.shirtSize);
+    return {
+      studentId: student.id,
+      shirtSize: student.shirtSize,
+      allocated: shirt ? true : false,
+      shirtId: shirt ? shirt.id : null
+    };
+  });
+
+  return allocations;
+}
