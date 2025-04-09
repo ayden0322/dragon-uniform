@@ -145,3 +145,30 @@ function allocateShirts(students, inventory) {
 
   return allocations;
 }
+
+// 修改短褲分配邏輯
+function allocatePants(students, inventory) {
+  // 計算有效腰圍並排序
+  const sortedStudents = students.map(student => {
+    const effectiveWaist = student.chest > student.waist ? student.chest : student.waist;
+    return { ...student, effectiveWaist };
+  }).sort((a, b) => {
+    if (a.effectiveWaist === b.effectiveWaist) {
+      return a.chest - b.chest; // 胸圍越小的優先
+    }
+    return a.effectiveWaist - b.effectiveWaist;
+  });
+
+  // 分配短褲
+  const allocations = sortedStudents.map(student => {
+    const pants = inventory.pants.find(p => p.size === student.pantsSize);
+    return {
+      studentId: student.id,
+      pantsSize: student.pantsSize,
+      allocated: pants ? true : false,
+      pantsId: pants ? pants.id : null
+    };
+  });
+
+  return allocations;
+}
