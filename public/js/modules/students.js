@@ -1,6 +1,6 @@
 // 學生資料相關功能模組
 import { saveToLocalStorage, loadFromLocalStorage, showAlert, downloadCSV, downloadExcel } from './utils.js';
-import { SIZES, UNIFORM_TYPES } from './config.js';
+import { SIZES, UNIFORM_TYPES, formatSize, getFemaleChestAdjustment } from './config.js';
 import { updateAllocationRatios } from './ui.js';
 
 // 學生資料
@@ -321,9 +321,9 @@ export function calculateUniformSizes() {
 function calculateShirtSize(student) {
     let chest = student.chest || 0;
     
-    // 女性胸圍調整
+    // 女性胸圍調整，使用學校配置的調整值
     if (student.gender === '女') {
-        chest = chest - 1.5;
+        chest += getFemaleChestAdjustment();
     }
     
     // 根據胸圍判定尺寸

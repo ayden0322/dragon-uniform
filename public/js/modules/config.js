@@ -81,6 +81,38 @@ export const SCHOOL_CONFIGS = {
 // 當前選擇的學校
 export let currentSchool = 'dragon';
 
+/**
+ * 獲取當前學校的配置
+ * @returns {Object} 當前學校的配置信息
+ */
+export function getCurrentSchoolConfig() {
+    return SCHOOL_CONFIGS[currentSchool] || SCHOOL_CONFIGS['dragon']; // 預設使用土庫國中配置
+}
+
+/**
+ * 獲取當前學校的女生胸圍調整值
+ * @returns {number} 女生胸圍調整值 (通常為負數)
+ */
+export function getFemaleChestAdjustment() {
+    const config = getCurrentSchoolConfig();
+    return config.femaleChestAdjustment || -1.5; // 預設值為-1.5cm
+}
+
+/**
+ * 設置當前學校
+ * @param {string} schoolId - 學校ID
+ * @returns {boolean} 設置是否成功
+ */
+export function setCurrentSchool(schoolId) {
+    if (SCHOOL_CONFIGS[schoolId]) {
+        currentSchool = schoolId;
+        // 將當前學校保存到 localStorage
+        localStorage.setItem('currentSchool', schoolId);
+        return true;
+    }
+    return false;
+}
+
 // 表格ID轉換為庫存類型
 export function tableIdToInventoryType(tableId) {
     switch (tableId) {

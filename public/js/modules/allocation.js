@@ -1,6 +1,6 @@
 // 分配相關功能模組
 import { saveToLocalStorage, loadFromLocalStorage, showAlert } from './utils.js';
-import { SIZES, UNIFORM_TYPES, formatSize, currentSizeDisplayMode, SIZE_DISPLAY_MODES } from './config.js';
+import { SIZES, UNIFORM_TYPES, formatSize, currentSizeDisplayMode, SIZE_DISPLAY_MODES, getFemaleChestAdjustment } from './config.js';
 import { inventoryData, calculateTotalInventory, updateInventoryUI, manualAdjustments } from './inventory.js';
 import { studentData, sortedStudentData, demandData, updateStudentAllocationUI } from './students.js';
 import { updateAllocationRatios } from './ui.js';
@@ -193,9 +193,9 @@ export async function allocateLongSleevePants() {
  */
 function calculateEffectiveChest(student) {
     let effectiveChest = student.chest || 0;
-    // 女生胸圍減1.5cm
+    // 女生胸圍調整，使用配置的調整值
     if (student.gender === '女') {
-        effectiveChest -= 1.5;
+        effectiveChest += getFemaleChestAdjustment(); // 使用學校配置的調整值
     }
     // 如果腰圍大於胸圍，使用腰圍
     const waist = student.waist || 0;
@@ -575,10 +575,10 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
         
         // 複製學生數組並根據腰圍和胸圍排序
         const sortedStudents = [...sortedStudentData].map(student => {
-            // 計算調整後的胸圍（女生胸圍減1.5cm）
+            // 計算調整後的胸圍（使用學校配置的女生胸圍調整值）
             let adjustedChest = student.chest || 0;
             if (student.gender === '女') {
-                adjustedChest -= 1.5;
+                adjustedChest += getFemaleChestAdjustment();
             }
             
             return {
@@ -1057,12 +1057,14 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
                 if (hasPriorFailure) {
                     console.log(`%c特別關注：儘管先前分配有失敗記錄，學生 ${student.name}(${student.className}-${student.number}) 仍然分配到長衣尺寸 ${size}%c`, 'background: #2ecc71; color: white; font-size: 12px; padding: 3px;', '');
                 } else {
-                    // 計算調整後的胸圍（女生胸圍減1.5cm）
+                    // 計算調整後的胸圍（使用學校配置的女生胸圍調整值）
                     let adjustedChest = student.chest || 0;
                     if (student.gender === '女') {
-                        adjustedChest -= 1.5;
+                        adjustedChest += getFemaleChestAdjustment();
                     }
-                    console.log(`長衣：${student.name}（${student.gender}，座號：${student.number}，胸圍：${student.chest}${student.gender === '女' ? `(已扣除1.5cm=${adjustedChest})` : ''}）， 分配尺寸 ${size}, 需求數量 ${requiredCount}, 剩餘庫存 ${remainingInventory[size]?.allocatable}`);
+                    // 獲取調整值，以便在日誌中顯示
+                    const adjustment = getFemaleChestAdjustment();
+                    console.log(`長衣：${student.name}（${student.gender}，座號：${student.number}，胸圍：${student.chest}${student.gender === '女' ? `(已調整${adjustment}cm=${adjustedChest})` : ''}）， 分配尺寸 ${size}, 需求數量 ${requiredCount}, 剩餘庫存 ${remainingInventory[size]?.allocatable}`);
                 }
                 break;
             }
@@ -1122,12 +1124,14 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
                     console.log(`學生 ${student.name}(${student.className}-${student.number}) 特殊分配尺寸 ${bestSize.size}（庫存最多）`);
 
                     // 修改為以下格式
-                    // 計算調整後的胸圍（女生胸圍減1.5cm）
+                    // 計算調整後的胸圍（使用學校配置的女生胸圍調整值）
                     let adjustedChest = student.chest || 0;
                     if (student.gender === '女') {
-                        adjustedChest -= 1.5;
+                        adjustedChest += getFemaleChestAdjustment();
                     }
-                    console.log(`長衣：${student.name}（${student.gender}，座號：${student.number}，胸圍：${student.chest}${student.gender === '女' ? `(已扣除1.5cm=${adjustedChest})` : ''}）， 特殊分配尺寸 ${bestSize.size}, 需求數量 ${requiredCount}, 剩餘庫存 ${remainingInventory[bestSize.size]?.allocatable}`);
+                    // 獲取調整值，以便在日誌中顯示
+                    const adjustment = getFemaleChestAdjustment();
+                    console.log(`長衣：${student.name}（${student.gender}，座號：${student.number}，胸圍：${student.chest}${student.gender === '女' ? `(已調整${adjustment}cm=${adjustedChest})` : ''}）， 特殊分配尺寸 ${bestSize.size}, 需求數量 ${requiredCount}, 剩餘庫存 ${remainingInventory[bestSize.size]?.allocatable}`);
                     
                     // 更新尺寸可用數量
                     allSizes = allSizes.map(s => s.size === bestSize.size ? 
