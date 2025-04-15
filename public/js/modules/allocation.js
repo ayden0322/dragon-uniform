@@ -1,6 +1,6 @@
 // 分配相關功能模組
 import { saveToLocalStorage, loadFromLocalStorage, showAlert } from './utils.js';
-import { SIZES, UNIFORM_TYPES, formatSize } from './config.js';
+import { SIZES, UNIFORM_TYPES, formatSize, currentSizeDisplayMode, SIZE_DISPLAY_MODES } from './config.js';
 import { inventoryData, calculateTotalInventory, updateInventoryUI, manualAdjustments } from './inventory.js';
 import { studentData, sortedStudentData, demandData, updateStudentAllocationUI } from './students.js';
 import { updateAllocationRatios } from './ui.js';
@@ -2078,6 +2078,9 @@ function tryAllocateSize(student, size, requiredCount, inventory, allocatedField
  */
 function exportAllocationResultsToExcel() {
     try {
+        // 記錄當前使用的尺寸顯示模式
+        console.log(`匯出Excel檔案 - 使用尺寸顯示模式: ${currentSizeDisplayMode}`);
+        
         // 創建一個新的工作簿
         const workbook = XLSX.utils.book_new();
 
@@ -2103,7 +2106,23 @@ function exportAllocationResultsToExcel() {
         // 生成文件名稱
         const now = new Date();
         const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
-        const filename = `制服分配結果_${timestamp}.xlsx`;
+        
+        // 將尺寸顯示模式加入檔名
+        let displayModeText = '';
+        switch (currentSizeDisplayMode) {
+            case SIZE_DISPLAY_MODES.size:
+                displayModeText = '尺寸';
+                break;
+            case SIZE_DISPLAY_MODES.number:
+                displayModeText = '尺碼';
+                break;
+            case SIZE_DISPLAY_MODES.both:
+            default:
+                displayModeText = '完整';
+                break;
+        }
+        
+        const filename = `制服分配結果_${displayModeText}_${timestamp}.xlsx`;
 
         // 下載Excel文件
         XLSX.writeFile(workbook, filename);
@@ -2142,11 +2161,11 @@ function createStudentDetailWorksheet() {
 
     // 添加學生數據
     sortedStudents.forEach((student, index) => {
-        // 處理各種制服的分配情況
-        let shortShirtSize = student.allocatedShirtSize || '-';
-        let shortPantsSize = student.allocatedPantsSize || '-';
-        let longShirtSize = student.allocatedLongShirtSize || '-';
-        let longPantsSize = student.allocatedLongPantsSize || '-';
+        // 處理各種制服的分配情況 - 使用formatSize函數格式化尺寸
+        let shortShirtSize = student.allocatedShirtSize ? formatSize(student.allocatedShirtSize) : '-';
+        let shortPantsSize = student.allocatedPantsSize ? formatSize(student.allocatedPantsSize) : '-';
+        let longShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
+        let longPantsSize = student.allocatedLongPantsSize ? formatSize(student.allocatedLongPantsSize) : '-';
         
         // 如果有分配失敗原因，直接顯示在對應欄位
         if (student.allocationFailReason) {
@@ -2214,8 +2233,20 @@ function createUniformTypeWorksheet(tableId) {
     rows.forEach(row => {
         const rowData = [];
         const cells = row.querySelectorAll('td');
-        cells.forEach(cell => {
-            rowData.push(cell.textContent.trim());
+        cells.forEach((cell, index) => {
+            // 檢查是否是尺寸欄位（第一列）
+            if (index === 0) {
+                // 獲取原始尺寸
+                const originalSize = cell.getAttribute('data-original-size');
+                // 如果有原始尺寸，使用formatSize函數格式化
+                if (originalSize) {
+                    rowData.push(formatSize(originalSize));
+                } else {
+                    rowData.push(cell.textContent.trim());
+                }
+            } else {
+                rowData.push(cell.textContent.trim());
+            }
         });
         data.push(rowData);
     });
