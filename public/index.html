@@ -12,11 +12,23 @@
         .form-control:disabled { background-color: #f8f9fa; }
         .table td, .table th { vertical-align: middle; }
         #alertContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; }
+        .header-actions { display: flex; align-items: center; gap: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="mb-4 text-center">學生制服自動分配系統</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0 text-center flex-grow-1">學生制服自動分配系統</h1>
+            <div class="header-actions">
+                <div class="form-group">
+                    <select id="sizeDisplayMode" class="form-select form-select-sm">
+                        <option value="both" selected>尺寸/尺碼 (XS/34)</option>
+                        <option value="size">僅尺寸 (XS)</option>
+                        <option value="number">僅尺碼 (34)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
         
         <!-- 警告訊息容器 -->
         <div id="alertContainer"></div>

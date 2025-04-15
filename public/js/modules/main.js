@@ -4,6 +4,51 @@ import { studentData, loadStudentData, updateAdjustmentPage } from './students.j
 import { loadAllocationResults } from './allocation.js';
 import { setupImportExportButtons, setupTabEvents, setupAllocationButton, setupAdjustmentPageButtons, updateAllocationRatios } from './ui.js';
 import { showAlert } from './utils.js';
+import { currentSizeDisplayMode, SIZE_DISPLAY_MODES, setSizeDisplayMode } from './config.js';
+
+/**
+ * 初始化尺寸顯示模式
+ */
+function initSizeDisplayMode() {
+    // 從localStorage獲取保存的顯示模式
+    const savedMode = localStorage.getItem('sizeDisplayMode');
+    if (savedMode && Object.values(SIZE_DISPLAY_MODES).includes(savedMode)) {
+        setSizeDisplayMode(savedMode);
+    }
+    
+    // 設置選擇器的初始值
+    const sizeDisplaySelect = document.getElementById('sizeDisplayMode');
+    if (sizeDisplaySelect) {
+        sizeDisplaySelect.value = currentSizeDisplayMode;
+        
+        // 添加事件監聽器
+        sizeDisplaySelect.addEventListener('change', (event) => {
+            const newMode = event.target.value;
+            if (setSizeDisplayMode(newMode)) {
+                // 重新渲染所有表格
+                refreshAllTables();
+                showAlert('尺寸顯示模式已變更', 'success');
+            }
+        });
+    }
+}
+
+/**
+ * 重新渲染所有包含尺寸的表格
+ */
+function refreshAllTables() {
+    // 重新初始化庫存表格
+    initInventoryFeatures();
+    
+    // 更新調整頁面
+    updateAdjustmentPage();
+    
+    // 更新學生表格（如果需要）
+    // reloadStudentTable();
+    
+    // 如果已經有分配結果，則重新載入
+    loadAllocationResults();
+}
 
 /**
  * 應用程式初始化
@@ -11,6 +56,9 @@ import { showAlert } from './utils.js';
 export function initApp() {
     try {
         console.log('應用程式初始化中...');
+        
+        // 初始化尺寸顯示模式
+        initSizeDisplayMode();
         
         // 載入庫存資料和手動調整資料
         loadInventoryAndAdjustments();

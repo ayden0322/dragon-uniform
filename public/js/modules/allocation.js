@@ -1,7 +1,7 @@
 // 分配相關功能模組
 import { saveToLocalStorage, loadFromLocalStorage, showAlert } from './utils.js';
-import { SIZES, UNIFORM_TYPES } from './config.js';
-import { inventoryData, calculateTotalInventory, updateInventoryUI } from './inventory.js';
+import { SIZES, UNIFORM_TYPES, formatSize } from './config.js';
+import { inventoryData, calculateTotalInventory, updateInventoryUI, manualAdjustments } from './inventory.js';
 import { studentData, sortedStudentData, demandData, updateStudentAllocationUI } from './students.js';
 import { updateAllocationRatios } from './ui.js';
 
@@ -1619,6 +1619,12 @@ function updateStudentDetailedResults() {
         const longShirtFailReason = student.allocationFailReason?.longSleeveShirt || '';
         const longPantsFailReason = student.allocationFailReason?.longSleevePants || '';
         
+        // 使用formatSize函數格式化尺寸
+        const formattedShirtSize = student.allocatedShirtSize ? formatSize(student.allocatedShirtSize) : '-';
+        const formattedPantsSize = student.allocatedPantsSize ? formatSize(student.allocatedPantsSize) : '-';
+        const formattedLongShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
+        const formattedLongPantsSize = student.allocatedLongPantsSize ? formatSize(student.allocatedLongPantsSize) : '-';
+        
         // 設置行內容
         row.innerHTML = `
             <td>${index + 1}</td>
@@ -1630,22 +1636,22 @@ function updateStudentDetailedResults() {
             <td>${student.waist || ''}</td>
             <td>${student.pantsLength || ''}</td>
             <td>
-                ${student.allocatedShirtSize ? student.allocatedShirtSize : '-'}
+                ${formattedShirtSize}
                 ${shortShirtFailReason ? `<div class="failure-reason">${shortShirtFailReason}</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedShirtSize ? (student.shortSleeveShirtCount || 1) : '-'}</td>
             <td>
-                ${student.allocatedPantsSize ? student.allocatedPantsSize : '-'}
+                ${formattedPantsSize}
                 ${shortPantsFailReason ? `<div class="failure-reason">${shortPantsFailReason}</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedPantsSize ? (student.shortSleevePantsCount || 1) : '-'}</td>
             <td>
-                ${student.allocatedLongShirtSize ? student.allocatedLongShirtSize : '-'}
+                ${formattedLongShirtSize}
                 ${longShirtFailReason ? `<div class="failure-reason">${longShirtFailReason}</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedLongShirtSize ? (student.longSleeveShirtCount || 1) : '-'}</td>
             <td>
-                ${student.allocatedLongPantsSize ? student.allocatedLongPantsSize : '-'}
+                ${formattedLongPantsSize}
                 ${longPantsFailReason ? `<div class="failure-reason">${longPantsFailReason}</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedLongPantsSize ? (student.longSleevePantsCount || 1) : '-'}</td>
@@ -1840,7 +1846,7 @@ export function updateInventoryAllocationResults() {
             // 創建行（更改顯示順序：總庫存 可分配數 已分配 分配剩餘數 預留數）
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${size}</td>
+                <td data-original-size="${size}">${formatSize(size)}</td>
                 <td>${total}</td>
                 <td>${originalAllocatable}</td>
                 <td><strong>${allocated}</strong></td>

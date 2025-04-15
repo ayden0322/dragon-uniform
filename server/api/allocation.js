@@ -135,29 +135,29 @@ const storageService = {
    */
   createHistoryRecord: (schoolId, historyDir, data) => {
     const { studentData, inventoryData, adjustmentData, results } = data;
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        
     try {
-      // 確保歷史記錄目錄存在
-      if (!fs.existsSync(historyDir)) {
-        fs.mkdirSync(historyDir, { recursive: true });
-      }
-      
-      // 創建分配歷史記錄
-      const historyFile = path.join(historyDir, `allocation-${timestamp}.json`);
+        // 確保歷史記錄目錄存在
+        if (!fs.existsSync(historyDir)) {
+            fs.mkdirSync(historyDir, { recursive: true });
+        }
+        
+        // 創建分配歷史記錄
+        const historyFile = path.join(historyDir, `allocation-${timestamp}.json`);
       const studentCount = storageService._getStudentCount(studentData);
       
-      const history = {
-        schoolId,
-        allocationDate: new Date().toISOString(),
+        const history = {
+            schoolId,
+            allocationDate: new Date().toISOString(),
         studentCount,
-        inventorySnapshot: inventoryData,
-        studentSnapshot: studentData,
-        adjustmentSnapshot: adjustmentData || {},
-        results,
-      };
-      
-      fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
+            inventorySnapshot: inventoryData,
+            studentSnapshot: studentData,
+            adjustmentSnapshot: adjustmentData || {},
+            results,
+        };
+        
+        fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
       return timestamp;
     } catch (error) {
       console.error('創建歷史記錄失敗:', error);
@@ -191,22 +191,22 @@ const storageService = {
     const { studentData, inventoryData, adjustmentData } = data;
     
     try {
-      const configurations = [
-        { type: 'students', data: studentData },
-        { type: 'inventory', data: inventoryData },
-        { type: 'adjustments', data: adjustmentData || {} }
-      ];
-      
-      configurations.forEach(config => {
-        const configFile = path.join(schoolDir, `${config.type}.json`);
-        const configData = {
-          schoolId,
-          configType: config.type,
-          data: config.data,
-          updatedAt: new Date().toISOString()
-        };
-        fs.writeFileSync(configFile, JSON.stringify(configData, null, 2));
-      });
+        const configurations = [
+            { type: 'students', data: studentData },
+            { type: 'inventory', data: inventoryData },
+            { type: 'adjustments', data: adjustmentData || {} }
+        ];
+        
+        configurations.forEach(config => {
+            const configFile = path.join(schoolDir, `${config.type}.json`);
+            const configData = {
+                schoolId,
+                configType: config.type,
+                data: config.data,
+                updatedAt: new Date().toISOString()
+            };
+            fs.writeFileSync(configFile, JSON.stringify(configData, null, 2));
+        });
     } catch (error) {
       console.error('更新配置文件失敗:', error);
       throw new Error(`更新配置文件失敗: ${error.message}`);
@@ -221,26 +221,26 @@ const storageService = {
    */
   getHistoryRecords: (historyDir, limit) => {
     try {
-      if (!fs.existsSync(historyDir)) {
+        if (!fs.existsSync(historyDir)) {
         return [];
-      }
-      
-      const files = fs.readdirSync(historyDir)
-        .filter(file => file.startsWith('allocation-') && file.endsWith('.json'))
-        .sort((a, b) => b.localeCompare(a)) // 按文件名降序排序（較新的文件在前）
-        .slice(0, parseInt(limit));
-      
+        }
+        
+        const files = fs.readdirSync(historyDir)
+            .filter(file => file.startsWith('allocation-') && file.endsWith('.json'))
+            .sort((a, b) => b.localeCompare(a)) // 按文件名降序排序（較新的文件在前）
+            .slice(0, parseInt(limit));
+        
       return files.map(file => {
         try {
-          const filePath = path.join(historyDir, file);
-          const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-          
-          // 返回簡要信息
-          return {
-            id: file.replace('allocation-', '').replace('.json', ''),
-            allocationDate: data.allocationDate,
-            studentCount: data.studentCount
-          };
+            const filePath = path.join(historyDir, file);
+            const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            
+            // 返回簡要信息
+            return {
+                id: file.replace('allocation-', '').replace('.json', ''),
+                allocationDate: data.allocationDate,
+                studentCount: data.studentCount
+            };
         } catch (err) {
           console.warn(`讀取歷史記錄 ${file} 失敗: ${err.message}`);
           return null;
@@ -552,8 +552,8 @@ exports.getAllocationHistory = (req, res) => {
     const historyDir = path.join(schoolDir, 'history');
     
     const history = storageService.getHistoryRecords(historyDir, limit);
-    res.json(history);
-  } catch (err) {
+        res.json(history);
+    } catch (err) {
     const errorResponse = errorService.handleApiError(err, '獲取分配歷史');
     res.status(500).json(errorResponse);
   }
@@ -565,19 +565,19 @@ exports.getAllocationHistory = (req, res) => {
  * @param {object} res - HTTP回應對象
  */
 exports.getAllocationDetail = (req, res) => {
-  try {
-    const { schoolId, id } = req.params;
-    
-    const schoolDir = ensureSchoolDir(schoolId);
-    const historyFile = path.join(schoolDir, 'history', `allocation-${id}.json`);
-    
-    if (!fs.existsSync(historyFile)) {
-      return res.status(404).json({ error: '找不到分配記錄' });
-    }
-    
+    try {
+        const { schoolId, id } = req.params;
+        
+        const schoolDir = ensureSchoolDir(schoolId);
+        const historyFile = path.join(schoolDir, 'history', `allocation-${id}.json`);
+        
+        if (!fs.existsSync(historyFile)) {
+            return res.status(404).json({ error: '找不到分配記錄' });
+        }
+        
     const allocation = storageService.getHistoryDetail(historyFile);
-    res.json(allocation);
-  } catch (err) {
+        res.json(allocation);
+    } catch (err) {
     const errorResponse = errorService.handleApiError(err, '獲取分配詳細信息');
     res.status(500).json(errorResponse);
   }

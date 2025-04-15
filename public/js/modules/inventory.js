@@ -1,5 +1,5 @@
 // 庫存相關功能模組
-import { SIZES, tableIdToInventoryType, inventoryTypeToTableId, UNIFORM_TYPES } from './config.js';
+import { SIZES, tableIdToInventoryType, inventoryTypeToTableId, UNIFORM_TYPES, formatSize } from './config.js';
 import { saveToLocalStorage, loadFromLocalStorage, showAlert } from './utils.js';
 import { updateAllocationRatios } from './ui.js';
 import { demandData } from './students.js';
@@ -55,8 +55,9 @@ export function initInventoryTables() {
         // 為每個尺寸添加行
         SIZES.forEach(size => {
             const row = document.createElement('tr');
+            // 使用尺寸格式化函數來顯示尺寸
             row.innerHTML = `
-                <td>${size}</td>
+                <td data-original-size="${size}">${formatSize(size)}</td>
                 <td><input type="number" class="form-control total-inventory" min="0" value="0"></td>
             `;
             tbody.appendChild(row);
@@ -135,7 +136,9 @@ export function updateInventoryUI(tableId, size) {
     
     for (const row of rows) {
         const sizeCell = row.querySelector('td:first-child');
-        if (sizeCell && sizeCell.textContent === size) {
+        if (sizeCell && sizeCell.dataset.originalSize === size) {
+            // 更新尺寸顯示
+            sizeCell.textContent = formatSize(size);
             targetRow = row;
             break;
         }
@@ -250,7 +253,7 @@ export function calculateTotalInventory(typeInventory) {
 }
 
 /**
- * 更新調整頁面的尺寸表格
+ * 更新尺寸表格
  * @param {string} type - 制服類型
  */
 export function updateSizeTable(type) {
@@ -308,7 +311,7 @@ export function updateSizeTable(type) {
         const row = document.createElement('tr');
         row.dataset.size = size;
         row.innerHTML = `
-            <td>${size}</td>
+            <td data-original-size="${size}">${formatSize(size)}</td>
             <td>${total}</td>
             <td>${calculatedAllocatable}</td>
             <td class="adjustment-cell">
