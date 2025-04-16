@@ -62,7 +62,7 @@ export const SCHOOL_CONFIGS = {
             longSleevePants: '長褲'
         },
         sizes: ['XS/34', 'S/36', 'M/38', 'L/40', 'XL/42', '2L/44', '3L/46', '4L/48', '5L/50', '6L/52', '7L/54', '8L/56', '9L/58'],
-        femaleChestAdjustment: -1.5
+        femaleChestAdjustment: -2
     },
     'sample': {
         name: '範例學校',
