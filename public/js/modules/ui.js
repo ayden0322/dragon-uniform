@@ -309,4 +309,25 @@ export function updateAllocationRatios() {
     } catch (error) {
         console.error('更新分配比率時發生錯誤:', error);
     }
+}
+
+/**
+ * 格式化尺寸顯示，包含褲長調整標記
+ * @param {Object} student - 學生資料
+ * @param {string} size - 尺寸字串
+ * @param {string} fieldType - 欄位類型，例如 'allocatedShirtSize'
+ * @returns {string} - 格式化後的尺寸字串
+ */
+export function formatSizeWithAdjustment(student, size, fieldType) {
+    if (!size) return '';
+    
+    // 根據欄位類型檢查是否有褲長調整
+    let isAdjusted = false;
+    if (fieldType === 'allocatedShirtSize' && student.isShirtSizeAdjustedForPantsLength) {
+        isAdjusted = true;
+    }
+    
+    // 如果有調整，添加上箭頭標記
+    const formattedSize = formatSize(size);
+    return isAdjusted ? `${formattedSize}↑` : formattedSize;
 } 
