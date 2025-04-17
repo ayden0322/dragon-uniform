@@ -365,12 +365,8 @@ const allocationService = {
     return students.map(student => {
       return { ...student, effectiveWaist: student.waist };
     }).sort((a, b) => {
-      // 主要排序依據：腰圍
-      if (a.effectiveWaist !== b.effectiveWaist) {
-        return a.effectiveWaist - b.effectiveWaist;
-      }
-      // 次要排序依據：胸圍較小的優先
-      return a.chest - b.chest;
+      // 只根據腰圍從小到大排序學生
+      return a.effectiveWaist - b.effectiveWaist;
     });
   },
   

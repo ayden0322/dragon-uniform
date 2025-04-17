@@ -142,6 +142,9 @@ export function resetAllocation() {
             student.isSpecialLongShirtAllocation = false;
             student.isSpecialLongPantsAllocation = false;
             
+            // 清除褲長調整標記
+            student.isPantsLengthAdjusted = false;
+            
             // 清除分配失敗原因
             student.allocationFailReason = {};
             
@@ -663,30 +666,17 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
         // 複製庫存資料用於分配
         const remainingInventory = JSON.parse(JSON.stringify(inventoryData[inventoryType]));
         
-        // 複製學生數組並根據腰圍和胸圍排序
+        // 複製學生數組並根據腰圍排序
         const sortedStudents = [...sortedStudentData].map(student => {
-            // 計算調整後的胸圍（使用學校配置的女生胸圍調整值）
-            let adjustedChest = student.chest || 0;
-            if (student.gender === '女') {
-                adjustedChest += getFemaleChestAdjustment();
-            }
-            
             return {
                 student,
-                waist: student.waist || 0,
-                adjustedChest: adjustedChest
+                waist: student.waist || 0
             };
-        }).sort((a, b) => {
-            if (a.waist === b.waist) {
-                // 腰圍相同時，按調整後的胸圍排序
-                return a.adjustedChest - b.adjustedChest;
-            }
-            return a.waist - b.waist;
-        });
+        }).sort((a, b) => a.waist - b.waist);
 
         console.log(`學生排序（前5名）：`, 
             sortedStudents.slice(0, 5).map(s => 
-                `${s.student.name}(${s.student.className}-${s.student.number}): 腰圍=${s.waist}, 調整後胸圍=${s.adjustedChest}`
+                `${s.student.name}(${s.student.className}-${s.student.number}): 腰圍=${s.waist}`
             )
         );
         
@@ -700,13 +690,10 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
             pantsSizeAdjusted: 0 // 新增：因褲長調整尺寸的學生數
         };
         
-        // 記錄未分配的學生
-        const unallocatedStudents = [];
+        // 第一階段：按照腰圍排序分配
+        console.log('分配開始：按腰圍順序分配');
         
-        // 第一階段：按照腰圍排序，分配符合階級限制的學生
-        console.log('第一階段分配開始：按腰圍順序分配');
-        
-        // 在第一階段分配開始前檢查短袖上衣分配失敗的學生
+        // 在分配開始前檢查短袖上衣分配失敗的學生
         const shortShirtFailedStudents = sortedStudents
             .filter(({student}) => 
                 student.allocationFailReason && 
@@ -734,9 +721,8 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
             });
         }
         
-        // 第一階段：按照排序分配
-        console.log('第一階段分配開始：按腰圍和胸圍順序分配');
-        for (const {student, waist, adjustedChest} of sortedStudents) {
+        // 分配流程：按腰圍和胸圍順序分配
+        for (const {student, waist} of sortedStudents) {
             // 跳過已分配的學生
             if (student.allocatedPantsSize) continue;
             
@@ -758,7 +744,6 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
             }
             
             let allocated = false;
-            let suitableSize = null;
             
             // 尋找可用的尺寸
             for (let i = 0; i < availableSizes.length; i++) {
@@ -767,7 +752,7 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
                 // 檢查剩餘庫存
                 const remainingStock = remainingInventory[size]?.allocatable || 0;
                 
-                // 修改：如果當前尺寸庫存不足但大於0，仍考慮使用
+                // 如果當前尺寸庫存不足，繼續查找
                 if (remainingStock <= 0) {
                     if (hasShirtFailure) {
                         console.log(`學生 ${student.name}(${student.className}-${student.number}) 尺寸 ${size} 無庫存（注意：此學生短袖上衣分配失敗）`);
@@ -775,167 +760,69 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
                     continue;
                 }
                 
-                // 檢查與上衣尺寸的階級差異
-                if (isAcceptableSizeDifference(size, student.allocatedShirtSize)) {
-                    // 檢查庫存是否足夠
-                    if (remainingInventory[size]?.allocatable >= requiredCount) {
-                        // 分配此尺寸
-                        student.allocatedPantsSize = size;
-                        student.isSpecialPantsAllocation = false;
-                        decreaseInventory(remainingInventory, size, requiredCount, inventoryType);
-                        stats.allocated++;
-                        if (i === 0) {
-                            stats.exact++;
-                        } else {
-                            stats.different++;
-                        }
-                        allocated = true;
-                        
-                        // 清除失敗原因（如果之前有）
-                        if (student.allocationFailReason && student.allocationFailReason[inventoryType]) {
-                            delete student.allocationFailReason[inventoryType];
-                        }
-                        
-                        console.log(`短褲：${student.name}(${student.gender}，座號：${student.number}，腰圍：${waist}) ，分配尺寸 ${size}, 需求數量 ${requiredCount}, 剩餘庫存 ${remainingInventory[size]?.allocatable}`);
-                        break;
-                    } else {
-                        console.log(`學生 ${student.name}(${student.className}-${student.number}) 尺寸 ${size} 庫存不足，需要 ${requiredCount} 件，但只剩 ${remainingInventory[size]?.allocatable} 件`);
-                    }
-                } else {
-                    // 記錄適合的尺寸，但不分配（階級差異過大）
-                    if (!suitableSize) {
-                        suitableSize = size;
-                        if (hasShirtFailure) {
-                            console.log(`學生 ${student.name}(${student.className}-${student.number}) 適合尺寸 ${size}，但與上衣尺寸 ${student.allocatedShirtSize || '無'} 差距過大（注意：此學生短袖上衣分配失敗）`);
-                        } else {
-                            console.log(`學生 ${student.name}(${student.className}-${student.number}) 適合尺寸 ${size}，但與上衣尺寸 ${student.allocatedShirtSize} 差距過大`);
-                        }
-                    }
-                }
-            }
-            
-            // 如果無法分配，記錄未分配學生及其適合尺寸
-            if (!allocated) {
-                unallocatedStudents.push({
-                    student,
-                    suitableSize: suitableSize || (availableSizes.length > 0 ? availableSizes[0].size : null),
-                    requiredCount
-                });
+                // 移除對上衣尺寸的階級差異檢查
+                // 檢查庫存是否足夠
+                let finalSize = size;
                 
-                if (hasShirtFailure) {
-                    console.log(`%c關注：學生 ${student.name}(${student.className}-${student.number}) 第一階段短褲分配失敗，且此學生短袖上衣也分配失敗%c`, 'background: #e74c3c; color: white; font-size: 12px; padding: 3px;', '');
-                }
-            }
-            
-            // 更新可用尺寸列表（移除庫存為0的尺寸）
-            availableSizes = availableSizes.filter(s => remainingInventory[s.size]?.allocatable > 0);
-            if (availableSizes.length === 0) {
-                console.warn('所有尺寸庫存都已用完，結束第一階段分配');
-                break;
-            }
-        }
-        
-        // 第二階段：處理未分配的學生
-        console.log(`第二階段分配開始：處理 ${unallocatedStudents.length} 名未分配學生`);
-        
-        // 記錄第一階段結束時的庫存狀態
-        console.log(`第一階段結束後庫存狀態：`);
-        Object.entries(remainingInventory).forEach(([size, data]) => {
-            console.log(`尺寸 ${size}: 可分配=${data.allocatable}, 已分配=${data.allocated}, 預留=${data.reserved}`);
-        });
-        
-        // 檢查未分配學生中有多少是短袖上衣分配失敗的
-        const unallocatedWithShirtFailure = unallocatedStudents.filter(({student}) => 
-            student.allocationFailReason && student.allocationFailReason.shortSleeveShirt);
-
-        if (unallocatedWithShirtFailure.length > 0) {
-            console.log(`%c第二階段中有 ${unallocatedWithShirtFailure.length} 名學生短袖上衣分配失敗%c`, 'background: #f39c12; color: white; font-size: 12px; padding: 3px;', '');
-            console.log('這些學生是:');
-            unallocatedWithShirtFailure.slice(0, 5).forEach(({student}) => {
-                console.log(`- 學生 ${student.name}(${student.className}-${student.number}) 短袖上衣分配失敗原因: ${student.allocationFailReason.shortSleeveShirt}`);
-            });
-            if (unallocatedWithShirtFailure.length > 5) {
-                console.log(`... 以及其他 ${unallocatedWithShirtFailure.length - 5} 名學生`);
-            }
-        }
-
-        for (const {student, suitableSize, requiredCount} of unallocatedStudents) {
-            // 檢查學生是否有短袖上衣分配失敗
-            const hasShirtFailure = student.allocationFailReason && student.allocationFailReason.shortSleeveShirt;
-            
-            // 查找適合尺寸及其相鄰尺寸的庫存
-            const suitableIndex = SIZES.indexOf(suitableSize);
-            const sizes = [];
-            
-            // 添加小一號尺寸（如果存在）
-            if (suitableIndex > 0) {
-                sizes.push(SIZES[suitableIndex - 1]);
-            }
-            
-            // 添加原始適合尺寸
-            if (suitableSize) sizes.push(suitableSize);
-            
-            // 添加大一號尺寸（如果存在）
-            if (suitableIndex < SIZES.length - 1) {
-                sizes.push(SIZES[suitableIndex + 1]);
-            }
-            
-            // 如果沒有找到合適尺寸，則添加所有可用尺寸
-            if (sizes.length === 0) {
-                sizes.push(...Object.keys(remainingInventory)
-                    .filter(size => remainingInventory[size] && remainingInventory[size].allocatable > 0));
-            }
-            
-            // 詳細日誌
-            if (hasShirtFailure) {
-                console.log(`%c關注：嘗試為短袖上衣分配失敗的學生 ${student.name}(${student.className}-${student.number}) 進行特殊分配%c`, 'background: #3498db; color: white; font-size: 12px; padding: 3px;', '');
-                console.log(`  - 考慮的尺寸: ${sizes.join(', ')}`);
-                console.log(`  - 上衣分配失敗原因: ${student.allocationFailReason.shortSleeveShirt}`);
-            }
-            
-            // 找出庫存最多的尺寸
-            let bestSize = null;
-            let maxStock = -1;
-            
-            for (const size of sizes) {
-                const currentStock = remainingInventory[size]?.allocatable || 0;
-                // 修改：只要有庫存（不需要滿足需求數量），就考慮這個尺寸
-                if (currentStock > 0 && currentStock > maxStock) {
-                    bestSize = size;
-                    maxStock = currentStock;
+                // 檢查學生褲長與短褲尺碼的差距，如果差距>=3，則分配大一個尺寸
+                if (student.pantsLength && (student.pantsLength - getSizeNumber(size) >= 3)) {
+                    // 添加詳細日誌
+                    console.log(`檢查學生 ${student.name} 的褲長調整: 褲長=${student.pantsLength}, 尺碼=${size}, 尺碼數字=${getSizeNumber(size)}, 差距=${student.pantsLength - getSizeNumber(size)}`);
                     
-                    if (hasShirtFailure) {
-                        console.log(`  - 考慮尺寸 ${size}，庫存為 ${currentStock}，與上衣尺寸 ${student.allocatedShirtSize || '無'} 差距 ${student.allocatedShirtSize ? Math.abs(SIZES.indexOf(size) - SIZES.indexOf(student.allocatedShirtSize)) : '未知'}`);
+                    // 嘗試獲取大一號的尺寸
+                    const largerSize = getNextLargerSize(size);
+                    console.log(`  - 獲取大一號尺寸: ${size} -> ${largerSize}`);
+                    
+                    // 檢查大一號尺寸是否有足夠庫存
+                    if (largerSize !== size && remainingInventory[largerSize]?.allocatable >= requiredCount) {
+                        console.log(`  - 褲長調整成功: ${size} -> ${largerSize} (褲長=${student.pantsLength}, 差距=${student.pantsLength - getSizeNumber(size)})`);
+                        finalSize = largerSize;
+                        stats.pantsSizeAdjusted++;
+                        student.isPantsLengthAdjusted = true; // 標記學生因褲長而調整了尺寸
+                        i = availableSizes.findIndex(s => s.size === largerSize); // 更新索引
+                    } else {
+                        console.log(`  - 褲長調整失敗: 更大尺寸 ${largerSize} 庫存不足, 需要 ${requiredCount} 件, 剩餘 ${remainingInventory[largerSize]?.allocatable || 0} 件`);
+                        console.log(`學生 ${student.name}(${student.className}-${student.number}) 褲長(${student.pantsLength})與尺寸${size}(${getSizeNumber(size)})差距過大，但更大尺寸${largerSize}無足夠庫存`);
                     }
+                } else if (student.pantsLength) {
+                    console.log(`學生 ${student.name} 無需褲長調整: 褲長=${student.pantsLength}, 尺碼=${size}, 尺碼數字=${getSizeNumber(size)}, 差距=${student.pantsLength - getSizeNumber(size)}`);
+                }
+                
+                if (remainingInventory[finalSize]?.allocatable >= requiredCount) {
+                    // 分配此尺寸
+                    student.allocatedPantsSize = finalSize;
+                    student.isSpecialPantsAllocation = false;
+                    decreaseInventory(remainingInventory, finalSize, requiredCount, inventoryType);
+                    stats.allocated++;
+                    if (i === 0) {
+                        stats.exact++;
+                    } else {
+                        stats.different++;
+                    }
+                    allocated = true;
+                    
+                    // 清除失敗原因（如果之前有）
+                    if (student.allocationFailReason && student.allocationFailReason[inventoryType]) {
+                        delete student.allocationFailReason[inventoryType];
+                    }
+                    
+                    console.log(`短褲：${student.name}(${student.gender}，座號：${student.number}，腰圍：${waist}) ，分配尺寸 ${finalSize}, 需求數量 ${requiredCount}, 剩餘庫存 ${remainingInventory[finalSize]?.allocatable}${student.isPantsLengthAdjusted ? ', 因褲長調整' : ''}`);
+                    break;
+                } else {
+                    console.log(`學生 ${student.name}(${student.className}-${student.number}) 尺寸 ${finalSize} 庫存不足，需要 ${requiredCount} 件，但只剩 ${remainingInventory[finalSize]?.allocatable} 件`);
                 }
             }
             
-            if (bestSize) {
-                // 分配最佳替代尺寸
-                student.allocatedPantsSize = bestSize;
-                student.isSpecialPantsAllocation = true; // 標記為特殊分配
-                decreaseInventory(remainingInventory, bestSize, requiredCount, inventoryType);
-                stats.allocated++;
-                stats.special++;
-                
-                // 長褲特殊分配
-                if (hasShirtFailure) {
-                    console.log(`%c成功：即使短袖上衣分配失敗，學生 ${student.name}(${student.className}-${student.number}) 仍成功特殊分配到長褲尺寸 ${bestSize}%c`, 'background: #2ecc71; color: white; font-size: 12px; padding: 3px;', '');
-                } else {
-                    console.log(`長褲：${student.name}（${student.gender}，座號：${student.number}，腰圍：${student.waist}）， 分配尺寸 ${bestSize}, 需求數量 ${requiredCount}, 剩餘庫存 ${remainingInventory[bestSize]?.allocatable}`);
-                }
-            } else {
-                // 無法分配
-                stats.failed++;
+            // 如果無法分配，記錄未分配學生
+            if (!allocated) {
+                // 添加分配失敗原因
                 student.allocationFailReason = student.allocationFailReason || {};
-                student.allocationFailReason[inventoryType] = '分配失敗，超過短衣限制';
+                student.allocationFailReason[inventoryType] = '沒有合適的尺寸或庫存不足';
+                stats.failed++;
                 
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配短褲失敗：沒有合適的尺寸或庫存不足`);
                 if (hasShirtFailure) {
-                    console.log(`%c失敗：學生 ${student.name}(${student.className}-${student.number}) 短袖上衣和短褲都分配失敗%c`, 'background: #e74c3c; color: white; font-size: 12px; padding: 3px;', '');
-                    console.log(`  - 短袖上衣失敗原因: ${student.allocationFailReason.shortSleeveShirt}`);
-                    console.log(`  - 短褲失敗原因: ${student.allocationFailReason[inventoryType]}`);
-                } else {
-                    console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配失敗，超過短衣限制`);
+                    console.log(`%c關注：學生 ${student.name}(${student.className}-${student.number}) 短褲分配失敗，且此學生短袖上衣也分配失敗%c`, 'background: #e74c3c; color: white; font-size: 12px; padding: 3px;', '');
                 }
             }
         }
@@ -946,7 +833,7 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
         console.log(`總分配成功: ${stats.allocated} 人`);
         console.log(`完全符合尺寸: ${stats.exact} 人`);
         console.log(`分配不同尺寸: ${stats.different} 人`);
-        console.log(`特殊分配: ${stats.special} 人`);
+        console.log(`因褲長調整尺寸: ${stats.pantsSizeAdjusted} 人`);
         console.log(`分配失敗: ${stats.failed} 人`);
         
         // 檢查所有類型的分配失敗
@@ -978,6 +865,15 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
             }
         }
         
+        // 輸出因褲長調整尺寸的學生列表
+        const lengthAdjustedStudents = sortedStudentData.filter(student => student.isPantsLengthAdjusted);
+        if (lengthAdjustedStudents.length > 0) {
+            console.log(`%c因褲長調整尺寸的學生（共${lengthAdjustedStudents.length}名）：`, 'background: #2ecc71; color: white; font-size: 12px; padding: 3px;');
+            lengthAdjustedStudents.forEach(student => {
+                console.log(`  - 學生 ${student.name}(${student.className}-${student.number}), 腰圍: ${student.waist}, 褲長: ${student.pantsLength}, 分配尺寸: ${student.allocatedPantsSize}`);
+            });
+        }
+        
         // 顯示最終庫存狀態
         console.log('最終庫存狀態：');
         Object.entries(remainingInventory).forEach(([size, data]) => {
@@ -988,7 +884,7 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
         // 更新庫存資料
         inventoryData[inventoryType] = remainingInventory;
         
-        console.log(`分配結果：成功=${stats.allocated}, 完全符合=${stats.exact}, 不同尺寸=${stats.different}, 特殊分配=${stats.special}, 因褲長調整=${stats.pantsSizeAdjusted}, 失敗=${stats.failed}`);
+        console.log(`分配結果：成功=${stats.allocated}, 完全符合=${stats.exact}, 不同尺寸=${stats.different}, 因褲長調整=${stats.pantsSizeAdjusted}, 失敗=${stats.failed}`);
         
         resolve(true);
     });
@@ -1580,6 +1476,22 @@ function allocateLongPants(inventoryType, allocatedField, specialField) {
             }
         }
         
+        // 輸出因褲長調整尺寸的學生列表
+        const lengthAdjustedStudents = sortedStudentData.filter(student => student.isPantsLengthAdjusted);
+        if (lengthAdjustedStudents.length > 0) {
+            console.log(`%c因褲長調整尺寸的學生（共${lengthAdjustedStudents.length}名）：`, 'background: #2ecc71; color: white; font-size: 12px; padding: 3px;');
+            lengthAdjustedStudents.forEach(student => {
+                console.log(`  - 學生 ${student.name}(${student.className}-${student.number}), 腰圍: ${student.waist}, 褲長: ${student.pantsLength}, 分配尺寸: ${student.allocatedLongPantsSize}`);
+            });
+        }
+        
+        // 顯示最終庫存狀態
+        console.log('最終庫存狀態：');
+        Object.entries(remainingInventory).forEach(([size, data]) => {
+            console.log(`尺寸 ${size}: 可分配=${data.allocatable}, 已分配=${data.allocated}, 預留=${data.reserved}`);
+        });
+        console.log('--------------------------------------------------');
+        
         // 更新庫存資料
         inventoryData[inventoryType] = remainingInventory;
         
@@ -1744,8 +1656,9 @@ function updateStudentDetailedResults() {
             </td>
             <td class="count-column">${student.allocatedShirtSize ? (student.shortSleeveShirtCount || 1) : '-'}</td>
             <td>
-                ${formattedPantsSize}
+                ${formattedPantsSize}${student.isPantsLengthAdjusted ? '<sup>↑</sup>' : ''}
                 ${shortPantsFailReason ? `<div class="failure-reason">${shortPantsFailReason}</div>` : ''}
+                ${student.isPantsLengthAdjusted ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedPantsSize ? (student.shortSleevePantsCount || 1) : '-'}</td>
             <td>

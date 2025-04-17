@@ -400,6 +400,7 @@
                             <p><strong>分配限制說明：</strong></p>
                             <ul>
                                 <li><strong>短褲限制：</strong>學生會受到短袖上衣的尺碼小於一個階級或大於一個階級的限制，因此可能產生『分配失敗，超過短衣限制』的資訊</li>
+                                <li><strong>短褲褲長調整：</strong>當學生褲長與短褲尺碼差距大於等於3時，會自動調整為大一號尺寸（顯示為<sup>↑</sup>標記）</li>
                                 <li><strong>長褲限制：</strong>會受到學生的褲長限制，因此可能產生『分配失敗：褲長限制』</li>
                             </ul>
                         </div>
@@ -416,7 +417,7 @@
                         <h5>尺寸分配結果</h5>
                     </div>
                     <div class="card-body">
-                        <!-- 暫時註釋掉分配結果統計表格
+                        <!-- 暫時註釋掉分配結果統計表格 -->
                         <div class="table-responsive">
                             <table id="resultTable" class="table table-striped table-bordered">
                                 <thead>
@@ -426,6 +427,7 @@
                                         <th>已分配</th>
                                         <th>完全符合</th>
                                         <th>尺寸不同</th>
+                                        <th>因褲長調整</th>
                                         <th>分配失敗</th>
                                     </tr>
                                 </thead>
