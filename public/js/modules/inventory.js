@@ -569,6 +569,86 @@ export function saveManualAdjustments() {
     } else {
         showAlert('手動調整已保存', 'success');
     }
+    
+    return { hasWarning, warningMessages };
+}
+
+/**
+ * 保存手動調整（無通知版本）
+ * 與原始saveManualAdjustments功能相同，但不顯示任何通知
+ */
+export function saveManualAdjustmentsSilent() {
+    let hasWarning = false;
+    let warningMessages = [];
+    
+    // 遍歷所有制服類型並更新庫存資料
+    for (const type in manualAdjustments) {
+        if (!manualAdjustments.hasOwnProperty(type)) continue;
+        
+        let typeTotal = 0; // 追蹤每種制服類型的總可分配數
+        
+        // 遍歷所有尺寸，包括沒有手動調整的尺寸
+        for (const size in inventoryData[type]) {
+            if (!inventoryData[type].hasOwnProperty(size)) continue;
+            
+            const total = inventoryData[type][size].total || 0;
+            let allocatable;
+            
+            // 檢查該尺寸是否有手動調整
+            if (manualAdjustments[type] && manualAdjustments[type][size] !== undefined) {
+                // 使用手動調整的值
+                allocatable = Math.min(manualAdjustments[type][size], total);
+            } else {
+                // 使用原來計算的值（比例計算）
+                const ratioElem = document.getElementById(`${type}Ratio`);
+                let ratio = 0;
+                if (ratioElem) {
+                    const percentText = ratioElem.textContent || '0%';
+                    ratio = parseFloat(percentText) / 100 || 0;
+                }
+                allocatable = Math.round(total * ratio);
+            }
+            
+            // 更新庫存資料
+            inventoryData[type][size].allocatable = allocatable;
+            inventoryData[type][size].reserved = total - allocatable;
+            
+            // 累加可分配數
+            typeTotal += allocatable;
+        }
+        
+        // 更新對應表格的UI
+        const tableId = inventoryTypeToTableId(type);
+        if (tableId) {
+            for (const size in inventoryData[type]) {
+                updateInventoryUI(tableId, size);
+            }
+        }
+
+        // 檢查當前制服類型的可分配數是否小於需求量
+        const demand = demandData[type]?.totalDemand || 0;
+        if (typeTotal < demand) {
+            const uniformTypeName = UNIFORM_TYPES[type];
+            const shortfall = demand - typeTotal;
+            const message = `${uniformTypeName}：可分配數總和(${typeTotal})小於需求量(${demand})，差額${shortfall}件`;
+            console.warn(message);
+            warningMessages.push(message);
+            hasWarning = true;
+        }
+
+        // 更新表格
+        updateSizeTable(type);
+    }
+    
+    // 保存到本地儲存
+    saveToLocalStorage('inventoryData', inventoryData);
+    saveToLocalStorage('manualAdjustments', manualAdjustments);
+    
+    // 更新分配比率
+    updateAllocationRatios();
+    
+    // 不顯示任何通知，但仍返回警告信息以供調用方使用
+    return { hasWarning, warningMessages };
 }
 
 /**
@@ -853,7 +933,7 @@ export function clearInventoryData() {
     updateAllocationRatios();
     
     // 顯示成功提示
-    showAlert('success', '已清空所有庫存資料');
+    showAlert('已清空所有庫存資料', 'success');
 }
 
 /**

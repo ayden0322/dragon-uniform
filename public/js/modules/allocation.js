@@ -1,7 +1,7 @@
 // 分配相關功能模組
 import { saveToLocalStorage, loadFromLocalStorage, showAlert, downloadExcel } from './utils.js';
 import { SIZES, UNIFORM_TYPES, formatSize, currentSizeDisplayMode, SIZE_DISPLAY_MODES, getFemaleChestAdjustment, getCurrentSchoolConfig } from './config.js';
-import { inventoryData, calculateTotalInventory, updateInventoryUI, manualAdjustments, initInventoryFeatures } from './inventory.js';
+import { inventoryData, calculateTotalInventory, updateInventoryUI, manualAdjustments, initInventoryFeatures, saveManualAdjustments, saveManualAdjustmentsSilent } from './inventory.js';
 import { studentData, sortedStudentData, demandData, updateStudentAllocationUI, updateAdjustmentPage } from './students.js';
 import { updateAllocationRatios, formatSizeWithAdjustment } from './ui.js';
 
@@ -54,6 +54,19 @@ export let allocationStats = {
  */
 export async function startAllocation() {
     console.log('開始制服分配程序');
+    
+    // 新增：在重置分配前儲存當前所有調整資料
+    try {
+        console.log('保存當前的所有調整資料（無通知模式）');
+        // 調用無通知版本的保存手動調整函數
+        saveManualAdjustmentsSilent();
+        // 確保庫存資料也被保存
+        saveToLocalStorage('inventoryData', inventoryData);
+        console.log('所有調整資料已保存');
+    } catch (error) {
+        console.warn('保存調整資料時發生錯誤:', error);
+        // 不中斷流程，繼續進行分配
+    }
     
     // 重置所有分配結果
     resetAllocation();
