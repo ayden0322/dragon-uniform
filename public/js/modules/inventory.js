@@ -169,10 +169,30 @@ export function loadInventoryData(tableId) {
     inventoryData = savedData;
 
     // 更新UI
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
     SIZES.forEach(size => {
-        if (savedData[type][size]) {
-            updateInventoryUI(tableId, size);
+        // 查找對應行
+        const rows = table.querySelectorAll('tbody tr');
+        let row = null;
+
+        for (const r of rows) {
+            const sizeCell = r.querySelector('td:first-child');
+            if (sizeCell && sizeCell.dataset.originalSize === size) {
+                row = r;
+                break;
+            }
         }
+
+        if (!row) return;
+
+        // 更新輸入欄位
+        const input = row.querySelector('.total-inventory');
+        if (!input) return;
+
+        const total = savedData[type][size]?.total || 0;
+        input.value = total;
     });
 }
 
@@ -714,7 +734,18 @@ function importInventoryFromWorkbook(workbook) {
         'longSleevePantsTable'
     ];
     
+    // 重新初始化表格，確保結構正確
     tableIds.forEach(tableId => {
+        const type = tableIdToInventoryType(tableId);
+        // 確保各尺碼的屬性結構完整
+        SIZES.forEach(size => {
+            if (inventoryData[type][size]) {
+                // 確保有 total 屬性
+                inventoryData[type][size].total = inventoryData[type][size].total || 0;
+            }
+        });
+        
+        initInventoryTable(tableId);
         loadInventoryData(tableId);
     });
     
@@ -772,10 +803,10 @@ function confirmClearInventoryData() {
 }
 
 /**
- * 清除庫存數據
+ * 清空庫存資料
  */
-function clearInventoryData() {
-    // 重置庫存數據
+export function clearInventoryData() {
+    // 重置庫存資料
     inventoryData = {
         shortSleeveShirt: {},
         shortSleevePants: {},
@@ -783,7 +814,18 @@ function clearInventoryData() {
         longSleevePants: {}
     };
     
-    // 重置手動調整數據
+    // 初始化每種類型的每個尺寸
+    const types = ['shortSleeveShirt', 'shortSleevePants', 'longSleeveShirt', 'longSleevePants'];
+    types.forEach(type => {
+        SIZES.forEach(size => {
+            if (!inventoryData[type]) {
+                inventoryData[type] = {};
+            }
+            inventoryData[type][size] = { total: 0 };
+        });
+    });
+
+    // 重置手動調整
     manualAdjustments = {
         shortSleeveShirt: {},
         shortSleevePants: {},
@@ -791,11 +833,11 @@ function clearInventoryData() {
         longSleevePants: {}
     };
     
-    // 保存到本地儲存
+    // 保存到本地存儲
     saveToLocalStorage('inventoryData', inventoryData);
     saveToLocalStorage('manualAdjustments', manualAdjustments);
     
-    // 更新UI
+    // 更新各表格UI
     const tableIds = [
         'shortSleeveShirtTable',
         'shortSleevePantsTable',
@@ -810,7 +852,8 @@ function clearInventoryData() {
     // 更新分配比率
     updateAllocationRatios();
     
-    showAlert('success', '所有庫存數據已清除');
+    // 顯示成功提示
+    showAlert('success', '已清空所有庫存資料');
 }
 
 /**
@@ -829,7 +872,7 @@ function initInventoryTable(tableId) {
     SIZES.forEach(size => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${size}</td>
+            <td data-original-size="${size}">${formatSize(size)}</td>
             <td><input type="number" class="form-control total-inventory" min="0" value="0"></td>
         `;
         tbody.appendChild(row);
