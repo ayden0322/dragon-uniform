@@ -507,8 +507,8 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
                     requiredCount
                 });
                 student.allocationFailReason = student.allocationFailReason || {};
-                student.allocationFailReason[inventoryType] = '所有尺寸庫存不足';
-                console.log(`學生 ${student.name}(${student.className}-${student.number}) 暫時無法分配，所有尺寸庫存不足`);
+                student.allocationFailReason[inventoryType] = '分配失敗：庫存不足';
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 暫時無法分配，庫存不足`);
             }
             
             // 更新可用尺寸列表
@@ -520,7 +520,7 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
                 sortedStudents.forEach(({student}) => {
                     if (!student[allocatedField] && !student.allocationFailReason?.[inventoryType]) {
                         student.allocationFailReason = student.allocationFailReason || {};
-                        student.allocationFailReason[inventoryType] = '所有尺寸庫存已用完';
+                        student.allocationFailReason[inventoryType] = '分配失敗：庫存不足';
                         stats.failed++;
                     }
                 });
@@ -610,11 +610,10 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
         } else {
             // 如果沒有任何庫存可用於第二階段，將所有未分配學生標記為失敗
             unallocatedStudents.forEach(({student}) => {
-                if (!student[allocatedField]) {
-                    stats.failed++;
-                    student.allocationFailReason = student.allocationFailReason || {};
-                    student.allocationFailReason[inventoryType] = '第二階段分配失敗：沒有可用庫存';
-                }
+                stats.failed++;
+                student.allocationFailReason = student.allocationFailReason || {};
+                student.allocationFailReason[inventoryType] = '分配失敗：庫存不足';
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配失敗：庫存不足`);
             });
         }
         
@@ -631,7 +630,7 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
                     (student.shortSleeveShirtCount || 1) > 0) {
                     stats.failed++;
                     student.allocationFailReason = student.allocationFailReason || {};
-                    student.allocationFailReason[inventoryType] = '分配過程中被跳過';
+                    student.allocationFailReason[inventoryType] = '分配失敗：庫存不足';
                 }
             });
         }
@@ -830,10 +829,10 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
             if (!allocated) {
                 // 添加分配失敗原因
                 student.allocationFailReason = student.allocationFailReason || {};
-                student.allocationFailReason[inventoryType] = '沒有合適的尺寸或庫存不足';
+                student.allocationFailReason[inventoryType] = '分配失敗：庫存不足';
                 stats.failed++;
                 
-                console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配短褲失敗：沒有合適的尺寸或庫存不足`);
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配短褲失敗：庫存不足`);
                 if (hasShirtFailure) {
                     console.log(`%c關注：學生 ${student.name}(${student.className}-${student.number}) 短褲分配失敗，且此學生短袖上衣也分配失敗%c`, 'background: #e74c3c; color: white; font-size: 12px; padding: 3px;', '');
                 }
@@ -1212,8 +1211,8 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
             unallocatedStudents.forEach(({student}) => {
                 stats.failed++;
                 student.allocationFailReason = student.allocationFailReason || {};
-                student.allocationFailReason[inventoryType] = '分配失敗：特殊分配階段無庫存可用';
-                console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配失敗：特殊分配階段無庫存可用`);
+                student.allocationFailReason[inventoryType] = '分配失敗：庫存不足';
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配失敗：庫存不足`);
             });
         }
         
