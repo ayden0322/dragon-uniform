@@ -603,7 +603,7 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
             } else {
                 stats.failed++;
                     student.allocationFailReason = student.allocationFailReason || {};
-                    student.allocationFailReason[inventoryType] = '分配失敗：沒有足夠的庫存';
+                    student.allocationFailReason[inventoryType] = '分配失敗：庫存不足';
                     console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配失敗：沒有足夠的庫存`);
                 }
             }
@@ -1146,7 +1146,7 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
             } else {
                 stats.failed++;
                     student.allocationFailReason = student.allocationFailReason || {};
-                    student.allocationFailReason[inventoryType] = '分配失敗：沒有足夠的庫存';
+                    student.allocationFailReason[inventoryType] = '分配失敗：庫存不足';
                     console.log(`學生 ${student.name}(${student.className}-${student.number}) 分配失敗：沒有足夠的庫存`);
                 }
             }
