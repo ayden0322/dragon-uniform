@@ -141,7 +141,19 @@ h1 {
 /* 警告訊息樣式 */
 #alertContainer .alert {
     max-width: 600px;
-    margin: 0 auto 20px auto;
+    margin: 0 0 10px 0;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 #alertContainer .alert-content {
