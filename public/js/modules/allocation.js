@@ -1738,6 +1738,11 @@ function updateStudentDetailedResults() {
  * 更新分配統計
  */
 export function updateAllocationStats() {
+    // 分配結果統計表格已被移除，此函數已禁用
+    console.log('分配結果統計表格(#resultTable)已被移除，不再更新統計資料');
+    return;
+    
+    // 以下代碼保留但不再執行
     // 尋找結果表格
     let resultTable = document.getElementById('resultTable');
     
@@ -2153,6 +2158,8 @@ function tryAllocateSize(student, size, requiredCount, inventory, allocatedField
  */
 function exportAllocationResultsToExcel() {
     try {
+        // 分配結果統計表 (#resultTable) 已從界面中移除，不會匯出到Excel中
+        
         // 記錄當前使用的尺寸顯示模式
         console.log(`匯出Excel檔案 - 使用尺寸顯示模式: ${currentSizeDisplayMode}`);
         
