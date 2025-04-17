@@ -8,6 +8,8 @@
  */
 export function showAlert(message, type = 'info', duration = 3000) {
     const alertContainer = document.getElementById('alertContainer');
+    if (!alertContainer) return; // 確保容器存在
+    
     const alertElement = document.createElement('div');
     
     // 設置提示樣式
@@ -24,17 +26,32 @@ export function showAlert(message, type = 'info', duration = 3000) {
     alertContainer.appendChild(alertElement);
     
     // 設定自動消失
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
         try {
-            const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
-            bsAlert.close();
+            // 確保元素仍在DOM中
+            if (document.body.contains(alertElement)) {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
+                bsAlert.close();
+            } else {
+                // 元素已不在DOM中，無需處理
+                console.log('Alert元素已不在DOM中，無需關閉');
+            }
         } catch (e) {
+            console.error('關閉Alert時發生錯誤:', e);
             // 如果Bootstrap Alert實例創建失敗，手動移除元素
             if (alertElement.parentNode) {
                 alertElement.parentNode.removeChild(alertElement);
             }
         }
     }, duration);
+    
+    // 如果用戶點擊關閉按鈕，清除定時器
+    const closeButton = alertElement.querySelector('.btn-close');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            clearTimeout(timeoutId);
+        });
+    }
 }
 
 /**

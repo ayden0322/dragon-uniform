@@ -1598,10 +1598,78 @@ function allocateLongPants(inventoryType, allocatedField, specialField) {
 }
 
 /**
+ * 檢查學生分配到的尺碼是否仍比褲長小2或更多
+ * 同時檢查上衣和褲子是否符合褲長要求
+ */
+function checkPantsLengthDeficiency() {
+    console.log('開始檢查尺碼與褲長不足情況');
+    
+    // 計數器
+    let shortShirtDeficiencyCount = 0;
+    let shortPantsDeficiencyCount = 0;
+    let longShirtDeficiencyCount = 0;
+    let longPantsDeficiencyCount = 0;
+    
+    // 檢查每個學生
+    studentData.forEach(student => {
+        // 清除之前可能存在的標記
+        student.shortShirtLengthDeficiency = false;
+        student.shortPantsLengthDeficiency = false;
+        student.longShirtLengthDeficiency = false;
+        student.longPantsLengthDeficiency = false;
+        
+        // 檢查短衣尺碼與褲長差距
+        if (student.allocatedShirtSize && student.pantsLength) {
+            const shortShirtSizeNumber = getSizeNumber(student.allocatedShirtSize);
+            if ((student.pantsLength - shortShirtSizeNumber) >= 2) {
+                student.shortShirtLengthDeficiency = true;
+                shortShirtDeficiencyCount++;
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 短衣尺碼 ${student.allocatedShirtSize}(${shortShirtSizeNumber}) 比褲長 ${student.pantsLength} 小 ${student.pantsLength - shortShirtSizeNumber}`);
+            }
+        }
+        
+        // 檢查短褲尺碼與褲長差距
+        if (student.allocatedPantsSize && student.pantsLength) {
+            const shortPantsSizeNumber = getSizeNumber(student.allocatedPantsSize);
+            if ((student.pantsLength - shortPantsSizeNumber) >= 2) {
+                student.shortPantsLengthDeficiency = true;
+                shortPantsDeficiencyCount++;
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 短褲尺碼 ${student.allocatedPantsSize}(${shortPantsSizeNumber}) 比褲長 ${student.pantsLength} 小 ${student.pantsLength - shortPantsSizeNumber}`);
+            }
+        }
+        
+        // 檢查長衣尺碼與褲長差距
+        if (student.allocatedLongShirtSize && student.pantsLength) {
+            const longShirtSizeNumber = getSizeNumber(student.allocatedLongShirtSize);
+            if ((student.pantsLength - longShirtSizeNumber) >= 2) {
+                student.longShirtLengthDeficiency = true;
+                longShirtDeficiencyCount++;
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 長衣尺碼 ${student.allocatedLongShirtSize}(${longShirtSizeNumber}) 比褲長 ${student.pantsLength} 小 ${student.pantsLength - longShirtSizeNumber}`);
+            }
+        }
+        
+        // 檢查長褲尺碼與褲長差距
+        if (student.allocatedLongPantsSize && student.pantsLength) {
+            const longPantsSizeNumber = getSizeNumber(student.allocatedLongPantsSize);
+            if ((student.pantsLength - longPantsSizeNumber) >= 2) {
+                student.longPantsLengthDeficiency = true;
+                longPantsDeficiencyCount++;
+                console.log(`學生 ${student.name}(${student.className}-${student.number}) 長褲尺碼 ${student.allocatedLongPantsSize}(${longPantsSizeNumber}) 比褲長 ${student.pantsLength} 小 ${student.pantsLength - longPantsSizeNumber}`);
+            }
+        }
+    });
+    
+    console.log(`尺碼與褲長不足檢查完成：短衣不足 ${shortShirtDeficiencyCount} 人，短褲不足 ${shortPantsDeficiencyCount} 人，長衣不足 ${longShirtDeficiencyCount} 人，長褲不足 ${longPantsDeficiencyCount} 人`);
+}
+
+/**
  * 更新分配結果頁面
  */
 export function updateAllocationResults() {
     console.log('開始更新分配結果頁面');
+    
+    // 檢查褲長不足情況
+    checkPantsLengthDeficiency();
     
     // 更新分配統計
     updateAllocationStats();
@@ -1749,24 +1817,28 @@ function updateStudentDetailedResults() {
                 ${formattedShirtSize}${student.isShirtSizeAdjustedForPantsLength ? '<sup>↑</sup>' : ''}
                 ${shortShirtFailReason ? `<div class="failure-reason">${shortShirtFailReason}</div>` : ''}
                 ${student.isShirtSizeAdjustedForPantsLength ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
+                ${student.shortShirtLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedShirtSize ? (student.shortSleeveShirtCount || 1) : '-'}</td>
             <td>
                 ${formattedPantsSize}${student.isPantsLengthAdjusted ? '<sup>↑</sup>' : ''}
                 ${shortPantsFailReason ? `<div class="failure-reason">${shortPantsFailReason}</div>` : ''}
                 ${student.isPantsLengthAdjusted ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
+                ${student.shortPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedPantsSize ? (student.shortSleevePantsCount || 1) : '-'}</td>
             <td>
                 ${formattedLongShirtSize}${student.isLongShirtSizeAdjustedForPantsLength ? '<sup>↑</sup>' : ''}
                 ${longShirtFailReason ? `<div class="failure-reason">${longShirtFailReason}</div>` : ''}
                 ${student.isLongShirtSizeAdjustedForPantsLength ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
+                ${student.longShirtLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedLongShirtSize ? (student.longSleeveShirtCount || 1) : '-'}</td>
             <td>
                 ${formattedLongPantsSize}${student.isPantsLengthAdjusted ? '<sup>↑</sup>' : ''}
                 ${longPantsFailReason ? `<div class="failure-reason">${longPantsFailReason}</div>` : ''}
                 ${student.isPantsLengthAdjusted ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">褲長需增尺碼</div>` : ''}
+                ${student.longPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedLongPantsSize ? (student.longSleevePantsCount || 1) : '-'}</td>
         `;
@@ -2290,11 +2362,19 @@ function createStudentDetailWorksheet() {
         if (student.isShirtSizeAdjustedForPantsLength && shortShirtSize !== '-') {
             shortShirtSize += '↑(褲長調整)';
         }
+        // 如果短衣褲長仍不足，添加標記
+        if (student.shortShirtLengthDeficiency && shortShirtSize !== '-') {
+            shortShirtSize += '!(褲長仍不足≥2)';
+        }
         
         let shortPantsSize = student.allocatedPantsSize ? formatSize(student.allocatedPantsSize) : '-';
         // 如果短褲有長度調整，添加標記
         if (student.isPantsLengthAdjusted && shortPantsSize !== '-') {
             shortPantsSize += '↑(褲長調整)';
+        }
+        // 如果短褲褲長仍不足，添加標記
+        if (student.shortPantsLengthDeficiency && shortPantsSize !== '-') {
+            shortPantsSize += '!(褲長仍不足≥2)';
         }
         
         let longShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
@@ -2302,11 +2382,19 @@ function createStudentDetailWorksheet() {
         if (student.isLongShirtSizeAdjustedForPantsLength && longShirtSize !== '-') {
             longShirtSize += '↑(褲長調整)';
         }
+        // 如果長衣褲長仍不足，添加標記
+        if (student.longShirtLengthDeficiency && longShirtSize !== '-') {
+            longShirtSize += '!(褲長仍不足≥2)';
+        }
         
         let longPantsSize = student.allocatedLongPantsSize ? formatSize(student.allocatedLongPantsSize) : '-';
         // 如果長褲有長度調整，添加標記
         if (student.isPantsLengthAdjusted && longPantsSize !== '-') {
             longPantsSize += '↑(褲長需增尺碼)';
+        }
+        // 如果長褲褲長仍不足，添加標記
+        if (student.longPantsLengthDeficiency && longPantsSize !== '-') {
+            longPantsSize += '!(褲長仍不足≥2)';
         }
         
         // 如果有分配失敗原因，直接顯示在對應欄位
