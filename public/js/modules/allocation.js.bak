@@ -1284,9 +1284,9 @@ function isPantsLengthAcceptable(studentPantsLength, pantsSize) {
 function adjustSizeForPantsLength(studentPantsLength, currentSize) {
     const sizeLengthInCm = getPantsLengthInCm(currentSize);
     
-    // 如果學生褲長比尺碼長度大於或等於3厘米，自動增加一個尺碼
+    // 如果學生褲長比尺碼長度大於或等於2厘米，自動增加一個尺碼
     if (studentPantsLength - sizeLengthInCm >= 3) {
-        console.log(`檢測到學生褲長 ${studentPantsLength}cm 比尺碼 ${currentSize}(${sizeLengthInCm}cm) 大於或等於3厘米，自動增加一個尺碼`);
+        console.log(`檢測到學生褲長 ${studentPantsLength}cm 比尺碼 ${currentSize}(${sizeLengthInCm}cm) 大於或等於2厘米，自動增加一個尺碼`);
         return getNextLargerSize(currentSize);
     }
     
@@ -1651,7 +1651,7 @@ function checkPantsLengthDeficiency() {
         // 檢查長褲尺碼與褲長差距
         if (student.allocatedLongPantsSize && student.pantsLength) {
             const longPantsSizeNumber = getSizeNumber(student.allocatedLongPantsSize);
-            if ((student.pantsLength - longPantsSizeNumber) >= 3) {
+            if ((student.pantsLength - longPantsSizeNumber) >= 2) {
                 student.longPantsLengthDeficiency = true;
                 longPantsDeficiencyCount++;
                 console.log(`學生 ${student.name}(${student.className}-${student.number}) 長褲尺碼 ${student.allocatedLongPantsSize}(${longPantsSizeNumber}) 比褲長 ${student.pantsLength} 小 ${student.pantsLength - longPantsSizeNumber}`);
@@ -1837,8 +1837,8 @@ function updateStudentDetailedResults() {
             <td>
                 ${formattedLongPantsSize}${student.isPantsLengthAdjusted ? '<sup>↑</sup>' : ''}
                 ${longPantsFailReason ? `<div class="failure-reason">${longPantsFailReason}</div>` : ''}
-                ${student.isPantsLengthAdjusted ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
-                ${student.longPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥3</div>` : ''}
+                ${student.isPantsLengthAdjusted ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">褲長需增尺碼</div>` : ''}
+                ${student.longPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedLongPantsSize ? (student.longSleevePantsCount || 1) : '-'}</td>
         `;
@@ -2390,11 +2390,11 @@ function createStudentDetailWorksheet() {
         let longPantsSize = student.allocatedLongPantsSize ? formatSize(student.allocatedLongPantsSize) : '-';
         // 如果長褲有長度調整，添加標記
         if (student.isPantsLengthAdjusted && longPantsSize !== '-') {
-            longPantsSize += '↑(褲長調整)';
+            longPantsSize += '↑(褲長需增尺碼)';
         }
         // 如果長褲褲長仍不足，添加標記
         if (student.longPantsLengthDeficiency && longPantsSize !== '-') {
-            longPantsSize += '!(褲長仍不足≥3)';
+            longPantsSize += '!(褲長仍不足≥2)';
         }
         
         // 如果有分配失敗原因，直接顯示在對應欄位
