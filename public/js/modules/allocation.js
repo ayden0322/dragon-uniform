@@ -53,7 +53,7 @@ export let allocationStats = {
  * 開始制服分配
  */
 export async function startAllocation() {
-    console.log('開始制服分配程序');
+    console.log('開始制服分配過程');
     
     // 新增：在重置分配前儲存當前所有調整資料
     try {
@@ -68,26 +68,80 @@ export async function startAllocation() {
         // 不中斷流程，繼續進行分配
     }
     
-    // 重置所有分配結果
-    resetAllocation();
-    
-    // 檢查是否有學生資料
-    if (!sortedStudentData || sortedStudentData.length === 0) {
-        console.warn('沒有學生資料可供分配');
-        throw new Error('沒有學生資料可供分配');
-    }
-    
-    // 檢查是否有庫存資料
-    if (!inventoryData) {
-        console.warn('沒有庫存資料可供分配');
-        throw new Error('沒有庫存資料可供分配');
-    }
-    
-    console.log(`開始為 ${sortedStudentData.length} 名學生分配制服`);
-    
-    let allocationSuccess = true;
-    
     try {
+        // 獲取排序後的學生數據
+        sortedStudentData = sortStudents();
+        
+        // 重置分配結果
+        resetAllocation();
+        
+        // 檢查是否有學生資料
+        if (!sortedStudentData || sortedStudentData.length === 0) {
+            console.warn('沒有學生資料可供分配');
+            throw new Error('沒有學生資料可供分配');
+        }
+        
+        // 檢查是否有庫存資料
+        if (!inventoryData) {
+            console.warn('沒有庫存資料可供分配');
+            throw new Error('沒有庫存資料可供分配');
+        }
+        
+        console.log(`開始為 ${sortedStudentData.length} 名學生分配制服`);
+        
+        // 顯示所有制服類型的庫存和需求情況
+        console.log('------------------------------');
+        console.log('分配前庫存與需求對比:');
+        
+        const uniformTypes = [
+            { type: 'shortSleeveShirt', name: '短衣', field: 'shortSleeveShirtCount' },
+            { type: 'shortSleevePants', name: '短褲', field: 'shortSleevePantsCount' },
+            { type: 'longSleeveShirt', name: '長衣', field: 'longSleeveShirtCount' },
+            { type: 'longSleevePants', name: '長褲', field: 'longSleevePantsCount' }
+        ];
+        
+        for (const { type, name, field } of uniformTypes) {
+            // 檢查是否有此類型的庫存
+            if (!inventoryData[type]) {
+                console.warn(`沒有 ${name} 庫存數據`);
+                continue;
+            }
+            
+            // 計算總需求量
+            let totalDemand = 0;
+            sortedStudentData.forEach(student => {
+                totalDemand += student[field] || 1;
+            });
+            
+            // 計算總可分配數量
+            let totalAllocatable = 0;
+            let totalInventory = 0;
+            let totalReserved = 0;
+            
+            for (const size in inventoryData[type]) {
+                const total = inventoryData[type][size].total || 0;
+                const allocatable = inventoryData[type][size].allocatable || 0;
+                const reserved = inventoryData[type][size].reserved || 0;
+                
+                totalInventory += total;
+                totalAllocatable += allocatable;
+                totalReserved += reserved;
+            }
+            
+            console.log(`${name}: 總庫存=${totalInventory}, 預留=${totalReserved}, 可分配=${totalAllocatable}, 需求=${totalDemand}`);
+            
+            // 如果總可分配數小於總需求量，發出警告
+            if (totalAllocatable < totalDemand) {
+                console.warn(`警告：${name}可分配數總和(${totalAllocatable})小於需求量(${totalDemand})，差額${totalDemand - totalAllocatable}件`);
+            }
+        }
+        console.log('------------------------------');
+        
+        // 設置分配中狀態
+        setAllocationInProgress(true);
+        
+        let allocationSuccess = true;
+        
         // 依序分配各種制服，每個函數單獨處理錯誤
         try {
             await allocateShortSleeveShirts();
@@ -124,14 +178,29 @@ export async function startAllocation() {
         // 保存分配結果
         saveData();
         
+        // 更新分配結果頁面
+        updateAllocationResults();
+        
         if (allocationSuccess) {
             console.log('制服分配完成');
         } else {
             console.warn('制服分配部分完成，有些類型的分配過程發生錯誤');
         }
+        
+        // 檢查是否應重新分配
+        const shouldReallocate = checkPantsLengthDeficiency();
+        
+        // 重置分配中狀態
+        setAllocationInProgress(false);
+        
+        return shouldReallocate;
     } catch (error) {
         console.error('分配過程發生錯誤:', error);
-        throw error;
+        showAlert('分配過程發生錯誤: ' + error.message, 'error');
+        
+        // 重置分配中狀態
+        setAllocationInProgress(false);
+        return false;
     }
 }
 
@@ -171,19 +240,45 @@ export function resetAllocation() {
     for (const type in inventoryData) {
         if (!inventoryData.hasOwnProperty(type)) continue;
         
+        let typeTotalAllocatable = 0;
+        
+        console.log(`重置 ${UNIFORM_TYPES[type]} 庫存分配結果:`);
+        
         for (const size in inventoryData[type]) {
             if (!inventoryData[type].hasOwnProperty(size)) continue;
             
             const total = inventoryData[type][size].total || 0;
             const reserved = inventoryData[type][size].reserved || 0;
             
+            // 記錄重置前的狀態
+            console.log(`  重置前 ${size}: 總數=${total}, 預留=${reserved}, 已分配=${inventoryData[type][size].allocated || 0}, 可分配=${inventoryData[type][size].allocatable || 0}`);
+            
             // 重置已分配數量為0
             inventoryData[type][size].allocated = 0;
             // 重置可分配數量為總數減去預留數
             inventoryData[type][size].allocatable = total - reserved;
             
-            console.log(`重置庫存 ${type}-${size}: 總數=${total}, 預留=${reserved}, 可分配=${inventoryData[type][size].allocatable}`);
+            typeTotalAllocatable += inventoryData[type][size].allocatable;
+            
+            console.log(`  重置後 ${size}: 總數=${total}, 預留=${reserved}, 可分配=${inventoryData[type][size].allocatable}`);
         }
+        
+        console.log(`${UNIFORM_TYPES[type]} 重置完成，總可分配數量=${typeTotalAllocatable}`);
+    }
+    
+    // 檢查預留比例是否正確
+    console.log('檢查各類型制服的預留比例:');
+    for (const type in inventoryData) {
+        let totalInventory = 0;
+        let totalAllocatable = 0;
+        
+        for (const size in inventoryData[type]) {
+            totalInventory += inventoryData[type][size].total || 0;
+            totalAllocatable += inventoryData[type][size].allocatable || 0;
+        }
+        
+        const reservedRatio = totalInventory > 0 ? (totalInventory - totalAllocatable) / totalInventory : 0;
+        console.log(`${UNIFORM_TYPES[type]}: 總庫存=${totalInventory}, 總可分配=${totalAllocatable}, 實際預留比例=${(reservedRatio * 100).toFixed(1)}%`);
     }
     
     // 重置最後分配狀態記錄
@@ -308,12 +403,19 @@ function isAcceptableLongPantsSizeDifference(pantsSize, shirtSize) {
  */
 function decreaseInventory(inventory, size, count, inventoryType) {
     if (inventory[size]) {
-        const actualCount = Math.min(count, inventory[size].allocatable);
+        // 確保使用正確的可分配數量
+        const allocatable = inventory[size].allocatable || 0;
+        const actualCount = Math.min(count, allocatable);
+        
+        // 記錄原始值以便偵錯
+        console.log(`減少庫存前 ${size}: 總數=${inventory[size].total}, 可分配=${allocatable}, 已分配=${inventory[size].allocated}, 預留=${inventory[size].reserved}`);
+        
+        // 減少可分配數量並增加已分配數量
         inventory[size].allocatable -= actualCount;
         inventory[size].allocated += actualCount;
         
-        // 輸出實際減少的庫存量
-        console.log(`減少庫存 ${size}: ${actualCount} 件，剩餘 ${inventory[size].allocatable} 件，總分配 ${inventory[size].allocated} 件`);
+        // 輸出實際減少的庫存量與更新後的狀態
+        console.log(`減少庫存 ${size}: ${actualCount} 件，剩餘可分配=${inventory[size].allocatable} 件，總分配=${inventory[size].allocated} 件，總預留=${inventory[size].reserved} 件`);
         
         // 確保不會出現負數
         inventory[size].allocatable = Math.max(0, inventory[size].allocatable);
@@ -352,6 +454,25 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
             allocationStats[inventoryType].failed = sortedStudentData.length;
             resolve(false);
             return;
+        }
+        
+        // 計算總需求量
+        let totalDemand = 0;
+        sortedStudentData.forEach(student => {
+            totalDemand += student.shortSleeveShirtCount || 1;
+        });
+        
+        // 計算總可分配數量
+        let totalAllocatable = 0;
+        for (const size in inventoryData[inventoryType]) {
+            totalAllocatable += inventoryData[inventoryType][size].allocatable || 0;
+        }
+        
+        console.log(`${UNIFORM_TYPES[inventoryType]}：總需求量=${totalDemand}，總可分配數量=${totalAllocatable}`);
+        
+        // 如果總可分配數小於總需求量，發出警告
+        if (totalAllocatable < totalDemand) {
+            console.warn(`警告：${UNIFORM_TYPES[inventoryType]}可分配數總和(${totalAllocatable})小於需求量(${totalDemand})，差額${totalDemand - totalAllocatable}件`);
         }
         
         // 獲取可用尺寸並排序（小到大）
@@ -661,6 +782,25 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
             return;
         }
         
+        // 計算總需求量
+        let totalDemand = 0;
+        sortedStudentData.forEach(student => {
+            totalDemand += student.shortSleevePantsCount || 1;
+        });
+        
+        // 計算總可分配數量
+        let totalAllocatable = 0;
+        for (const size in inventoryData[inventoryType]) {
+            totalAllocatable += inventoryData[inventoryType][size].allocatable || 0;
+        }
+        
+        console.log(`${UNIFORM_TYPES[inventoryType]}：總需求量=${totalDemand}，總可分配數量=${totalAllocatable}`);
+        
+        // 如果總可分配數小於總需求量，發出警告
+        if (totalAllocatable < totalDemand) {
+            console.warn(`警告：${UNIFORM_TYPES[inventoryType]}可分配數總和(${totalAllocatable})小於需求量(${totalDemand})，差額${totalDemand - totalAllocatable}件`);
+        }
+        
         // 獲取可用尺寸並排序（小到大）
         let availableSizes = getAvailableSizes(inventoryData, inventoryType);
         
@@ -916,6 +1056,25 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
             return;
         }
         
+        // 計算總需求量
+        let totalDemand = 0;
+        sortedStudentData.forEach(student => {
+            totalDemand += student.longSleeveShirtCount || 1;
+        });
+        
+        // 計算總可分配數量
+        let totalAllocatable = 0;
+        for (const size in inventoryData[inventoryType]) {
+            totalAllocatable += inventoryData[inventoryType][size].allocatable || 0;
+        }
+        
+        console.log(`${UNIFORM_TYPES[inventoryType]}：總需求量=${totalDemand}，總可分配數量=${totalAllocatable}`);
+        
+        // 如果總可分配數小於總需求量，發出警告
+        if (totalAllocatable < totalDemand) {
+            console.warn(`警告：${UNIFORM_TYPES[inventoryType]}可分配數總和(${totalAllocatable})小於需求量(${totalDemand})，差額${totalDemand - totalAllocatable}件`);
+        }
+        
         // 獲取可用尺寸並排序（小到大）
         let availableSizes = getAvailableSizes(inventoryData, inventoryType);
         
@@ -929,7 +1088,7 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
             resolve(false);
             return;
         }
-
+        
         // 複製庫存資料用於分配
         const remainingInventory = JSON.parse(JSON.stringify(inventoryData[inventoryType]));
         
@@ -1266,8 +1425,8 @@ function getPantsLengthInCm(size) {
 
 /**
  * 檢查長褲尺寸與長袖上衣尺寸的階級差異
- * @param {string} studentPantsLength - 學生褲長
  * @param {string} pantsSize - 長褲尺寸
+ * @param {string} shirtSize - 長袖上衣尺寸
  * @returns {boolean} - 是否符合階級差異要求
  */
 function isPantsLengthAcceptable(studentPantsLength, pantsSize) {
@@ -1305,6 +1464,25 @@ function allocateLongPants(inventoryType, allocatedField, specialField) {
             console.warn(`沒有 ${UNIFORM_TYPES[inventoryType]} 庫存資料`);
             resolve(false);
             return;
+        }
+        
+        // 計算總需求量
+        let totalDemand = 0;
+        sortedStudentData.forEach(student => {
+            totalDemand += student.longSleevePantsCount || 1;
+        });
+        
+        // 計算總可分配數量
+        let totalAllocatable = 0;
+        for (const size in inventoryData[inventoryType]) {
+            totalAllocatable += inventoryData[inventoryType][size].allocatable || 0;
+        }
+        
+        console.log(`${UNIFORM_TYPES[inventoryType]}：總需求量=${totalDemand}，總可分配數量=${totalAllocatable}`);
+        
+        // 如果總可分配數小於總需求量，發出警告
+        if (totalAllocatable < totalDemand) {
+            console.warn(`警告：${UNIFORM_TYPES[inventoryType]}可分配數總和(${totalAllocatable})小於需求量(${totalDemand})，差額${totalDemand - totalAllocatable}件`);
         }
         
         // 獲取可用尺寸並排序（小到大）
@@ -2157,18 +2335,27 @@ export function loadAllocationResults() {
  */
 function getAvailableSizes(inventoryData, inventoryType) {
     const availableSizes = [];
+    let totalAvailable = 0;
+    
+    console.log(`獲取 ${UNIFORM_TYPES[inventoryType]} 可用尺寸列表:`);
     
     for (const size in inventoryData[inventoryType]) {
         if (!inventoryData[inventoryType].hasOwnProperty(size)) continue;
         
         const invData = inventoryData[inventoryType][size];
         const available = invData.allocatable || 0;
+        const total = invData.total || 0;
+        const reserved = invData.reserved || 0;
+        
+        // 記錄詳細的尺寸資訊
+        console.log(`  尺寸 ${size}: 總庫存=${total}, 預留=${reserved}, 可分配=${available}`);
         
         if (available > 0) {
             availableSizes.push({
                 size: size,
                 available: available
             });
+            totalAvailable += available;
         }
     }
     
@@ -2176,6 +2363,8 @@ function getAvailableSizes(inventoryData, inventoryType) {
     availableSizes.sort((a, b) => {
         return SIZES.indexOf(a.size) - SIZES.indexOf(b.size);
     });
+    
+    console.log(`${UNIFORM_TYPES[inventoryType]} 總可用尺寸數量: ${availableSizes.length}, 總可分配數量: ${totalAvailable}`);
     
     return availableSizes;
 }
@@ -2199,14 +2388,21 @@ function findBestSize(suitableSizes, inventory) {
     let bestSize = null;
     let maxAvailable = 0;
     
+    console.log(`尋找最佳尺寸，考慮 ${suitableSizes.length} 個候選尺寸:`);
+    
     // 尋找庫存最多的尺寸
     for (const size of suitableSizes) {
         const available = inventory[size]?.allocatable || 0;
+        console.log(`  尺寸 ${size}: 可分配數量=${available}`);
+        
         if (available > maxAvailable) {
             maxAvailable = available;
             bestSize = size;
+            console.log(`  -> 更新最佳尺寸為 ${size}，可分配數量=${available}`);
         }
     }
+    
+    console.log(`選定最佳尺寸: ${bestSize || '無可用尺寸'}${bestSize ? `，可分配數量=${inventory[bestSize]?.allocatable}` : ''}`);
     
     return bestSize;
 }

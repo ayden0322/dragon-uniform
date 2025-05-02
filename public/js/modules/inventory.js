@@ -203,41 +203,74 @@ export function loadInventoryData(tableId) {
  * @param {Object} manualAdjustments - 手動調整資料
  */
 export function calculateReservedQuantities(inventoryData, demandData, manualAdjustments) {
+    console.log('開始計算預留數量（使用固定預留比例10%）...');
+    
     // 處理每種制服類型
     for (const type in inventoryData) {
         if (!inventoryData.hasOwnProperty(type)) continue;
+        
+        console.log(`處理制服類型: ${type}`);
+        let typeTotal = 0;
+        let typeReserved = 0;
+        let typeAllocatable = 0;
         
         // 計算每個尺寸
         for (const size in inventoryData[type]) {
             if (!inventoryData[type].hasOwnProperty(size)) continue;
             
             const totalInventory = inventoryData[type][size].total || 0;
+            typeTotal += totalInventory;
+            
             let allocatable = 0;
+            let reserved = 0;
             
             // 檢查是否有手動調整
             if (manualAdjustments && 
                 manualAdjustments[type] && 
                 manualAdjustments[type][size] !== undefined) {
-                // 使用手動調整的值
+                // 使用手動調整的值作為可分配數
                 allocatable = manualAdjustments[type][size];
+                // 計算預留數為總庫存減去可分配數
+                reserved = totalInventory - allocatable;
+                console.log(`尺寸 ${size}: 使用手動調整值 - 總庫存=${totalInventory}, 手動調整值=${allocatable}, 預留數=${reserved}`);
             } else {
                 // 計算預留數量（無條件進位）
-                const reserved = Math.ceil(totalInventory * RESERVE_RATIO);
+                reserved = Math.ceil(totalInventory * RESERVE_RATIO);
                 // 計算可分配數量
                 allocatable = totalInventory - reserved;
+                console.log(`尺寸 ${size}: 計算預留數 - 總庫存=${totalInventory}, 預留比例=${RESERVE_RATIO}, 預留數=${reserved}, 可分配數=${allocatable}`);
             }
             
             // 確保可分配數量不超過總庫存且不小於0
+            const originalAllocatable = allocatable;
             allocatable = Math.min(Math.max(allocatable, 0), totalInventory);
+            
+            if (allocatable !== originalAllocatable) {
+                console.log(`尺寸 ${size}: 調整可分配數 - 原值=${originalAllocatable}, 調整後=${allocatable}`);
+            }
+            
+            // 重新計算預留數（確保一致性）
+            reserved = totalInventory - allocatable;
+            
+            // 更新累計數
+            typeReserved += reserved;
+            typeAllocatable += allocatable;
             
             // 更新庫存資料
             inventoryData[type][size].allocatable = allocatable;
-            inventoryData[type][size].reserved = totalInventory - allocatable;
+            inventoryData[type][size].reserved = reserved;
+            
+            console.log(`尺寸 ${size}: 最終值 - 總庫存=${totalInventory}, 預留數=${reserved}, 可分配數=${allocatable}`);
         }
+        
+        // 輸出制服類型總計
+        const actualReserveRatio = typeTotal > 0 ? (typeReserved / typeTotal * 100).toFixed(1) : '0.0';
+        console.log(`制服類型 ${type} 總計: 總庫存=${typeTotal}, 總預留數=${typeReserved}, 總可分配數=${typeAllocatable}, 實際預留比例=${actualReserveRatio}%`);
     }
     
     // 保存到本地儲存
     saveToLocalStorage('inventoryData', inventoryData);
+    console.log('預留數量計算完成，已更新庫存資料');
     
     return inventoryData;
 }
@@ -271,6 +304,8 @@ export function updateSizeTable(type) {
 
     // 使用固定的預留比例10%
     const reserveRatio = RESERVE_RATIO; // 10%
+    
+    console.log(`更新尺寸表格: ${type}, 使用預留比例=${reserveRatio*100}%`);
 
     // 初始化總數計數器
     let totalInventory = 0;
@@ -298,9 +333,17 @@ export function updateSizeTable(type) {
         if (manualAdjustments[type] && manualAdjustments[type][size] !== undefined) {
             manualAdjustment = manualAdjustments[type][size];
             adjustedAllocatable = manualAdjustment;
+            console.log(`尺寸 ${size}: 使用手動調整 - 計算可分配數=${calculatedAllocatable}, 手動調整值=${manualAdjustment}`);
+        } else {
+            console.log(`尺寸 ${size}: 使用計算值 - 總庫存=${total}, 預留數=${reservedQuantity}, 可分配數=${calculatedAllocatable}`);
         }
         
+        // 計算預留數
         const reserved = total - adjustedAllocatable;
+        
+        // 更新庫存數據以確保一致性
+        inventoryData[type][size].allocatable = adjustedAllocatable;
+        inventoryData[type][size].reserved = reserved;
         
         // 更新總數
         totalInventory += total;
@@ -363,11 +406,20 @@ export function updateSizeTable(type) {
             row.querySelector('.adjusted-allocatable').textContent = value;
             row.querySelector('.reserved').textContent = total - value;
             
+            // 更新庫存數據以確保一致性
+            inventoryData[type][size].allocatable = value;
+            inventoryData[type][size].reserved = total - value;
+            
+            // 記錄調整信息
+            console.log(`手動調整: ${type} 尺寸 ${size} - 調整可分配數為 ${value}, 預留數為 ${total - value}`);
+            
             // 直接更新總計行（立即反映變更）
             manualUpdateTotalRow(type, table);
             
             // 保存手動調整到本地儲存
             saveToLocalStorage('manualAdjustments', manualAdjustments);
+            // 保存更新後的庫存數據
+            saveToLocalStorage('inventoryData', inventoryData);
         });
 
         // 增加按鈕事件監聽器
@@ -392,10 +444,10 @@ export function updateSizeTable(type) {
             }
         });
     }
-    
-    // 添加總計行
+
+    // 更新總計行
     const totalRow = document.createElement('tr');
-    totalRow.classList.add('table-info', 'total-row');
+    totalRow.className = 'total-row table-secondary';
     totalRow.innerHTML = `
         <td><strong>總計</strong></td>
         <td><strong>${totalInventory}</strong></td>
@@ -405,6 +457,10 @@ export function updateSizeTable(type) {
         <td><strong>${totalReserved}</strong></td>
     `;
     tbody.appendChild(totalRow);
+    
+    // 記錄最終計算結果
+    const actualReserveRatio = totalInventory > 0 ? (totalReserved / totalInventory * 100).toFixed(1) : '0.0';
+    console.log(`尺寸表格 ${type} 更新完成: 總庫存=${totalInventory}, 總預留數=${totalReserved}, 總可分配數=${totalAdjustedAllocatable}, 實際預留比例=${actualReserveRatio}%`);
 }
 
 /**
@@ -524,40 +580,50 @@ export function saveManualAdjustments() {
     let hasWarning = false;
     let warningMessages = [];
     
+    console.log('保存手動調整數據...');
+    
     // 遍歷所有制服類型並更新庫存資料
     for (const type in manualAdjustments) {
         if (!manualAdjustments.hasOwnProperty(type)) continue;
         
         let typeTotal = 0; // 追蹤每種制服類型的總可分配數
+        let totalInventory = 0;
+        let totalReserved = 0;
+        
+        console.log(`處理制服類型: ${type}`);
         
         // 遍歷所有尺寸，包括沒有手動調整的尺寸
         for (const size in inventoryData[type]) {
             if (!inventoryData[type].hasOwnProperty(size)) continue;
             
             const total = inventoryData[type][size].total || 0;
+            totalInventory += total;
             let allocatable;
             
             // 檢查該尺寸是否有手動調整
             if (manualAdjustments[type] && manualAdjustments[type][size] !== undefined) {
                 // 使用手動調整的值
                 allocatable = Math.min(manualAdjustments[type][size], total);
+                console.log(`尺寸 ${size}: 使用手動調整值 - 總庫存=${total}, 調整值=${allocatable}`);
             } else {
-                // 使用原來計算的值（比例計算）
-                const ratioElem = document.getElementById(`${type}Ratio`);
-                let ratio = 0;
-                if (ratioElem) {
-                    const percentText = ratioElem.textContent || '0%';
-                    ratio = parseFloat(percentText) / 100 || 0;
-                }
-                allocatable = Math.round(total * ratio);
+                // 使用固定預留比例計算
+                const reservedQuantity = Math.ceil(total * RESERVE_RATIO);
+                allocatable = total - reservedQuantity;
+                console.log(`尺寸 ${size}: 使用計算值 - 總庫存=${total}, 預留比例=${RESERVE_RATIO}, 預留數=${reservedQuantity}, 可分配數=${allocatable}`);
             }
+            
+            // 計算預留數量
+            const reserved = total - allocatable;
+            totalReserved += reserved;
             
             // 更新庫存資料
             inventoryData[type][size].allocatable = allocatable;
-            inventoryData[type][size].reserved = total - allocatable;
+            inventoryData[type][size].reserved = reserved;
             
             // 累加可分配數
             typeTotal += allocatable;
+            
+            console.log(`尺寸 ${size}: 最終值 - 總庫存=${total}, 預留數=${reserved}, 可分配數=${allocatable}`);
         }
         
         // 更新對應表格的UI
@@ -567,122 +633,130 @@ export function saveManualAdjustments() {
                 updateInventoryUI(tableId, size);
             }
         }
-
-        // 檢查當前制服類型的可分配數是否小於需求量
+        
+        // 計算實際的預留比例
+        const actualReserveRatio = totalInventory > 0 ? (totalReserved / totalInventory * 100).toFixed(1) : '0.0';
+        console.log(`制服類型 ${type} 總計: 總庫存=${totalInventory}, 總預留數=${totalReserved}, 總可分配數=${typeTotal}, 實際預留比例=${actualReserveRatio}%`);
+        
+        // 計算庫存比需求的比例以檢查預留是否過多
         const demand = demandData[type]?.totalDemand || 0;
-        if (typeTotal < demand) {
-            const uniformTypeName = UNIFORM_TYPES[type];
-            const shortfall = demand - typeTotal;
-            const message = `${uniformTypeName}：可分配數總和(${typeTotal})小於需求量(${demand})，差額${shortfall}件`;
-            console.warn(message);
-            warningMessages.push(message);
+        if (demand > 0 && typeTotal < demand) {
+            const deficit = demand - typeTotal;
+            const deficitPercent = ((deficit / demand) * 100).toFixed(1);
+            
+            const warningMsg = `${UNIFORM_TYPES[type]}：可分配數總和(${typeTotal})小於需求量(${demand})，差額${deficit}件 (${deficitPercent}%)`;
+            console.warn(warningMsg);
+            warningMessages.push(warningMsg);
             hasWarning = true;
         }
-
-        // 更新表格
-        updateSizeTable(type);
     }
     
     // 保存到本地儲存
-    saveToLocalStorage('inventoryData', inventoryData);
+    console.log('保存手動調整數據到本地儲存');
     saveToLocalStorage('manualAdjustments', manualAdjustments);
+    saveToLocalStorage('inventoryData', inventoryData);
     
     // 更新分配比率
     updateAllocationRatios();
     
-    // 顯示訊息
+    // 顯示通知
     if (hasWarning) {
-        const warningHTML = `
-            <div>手動調整已保存，但以下制服類型的可分配數小於需求量：</div>
-            <ul style="text-align:left; margin-top:8px; padding-left:20px;">
-                ${warningMessages.map(msg => `<li>${msg}</li>`).join('')}
-            </ul>
-            <div style="margin-top:5px;">請注意檢查並調整。</div>
-        `;
-        showAlert(warningHTML, 'warning', 8000);
+        const message = `<strong>警告</strong>：部分制服類型的可分配數小於需求量，可能導致無法完全分配。<br><br>` + 
+                         warningMessages.map(msg => `• ${msg}`).join('<br>');
+        showAlert(message, 'warning', 10000);  // 顯示10秒
     } else {
-        showAlert('手動調整已保存', 'success');
+        showAlert('預留調整已保存', 'success');
     }
     
-    return { hasWarning, warningMessages };
+    console.log('手動調整數據保存完成');
+    
+    return {
+        hasWarning,
+        warningMessages
+    };
 }
 
 /**
- * 保存手動調整（無通知版本）
- * 與原始saveManualAdjustments功能相同，但不顯示任何通知
+ * 保存手動調整（無通知模式）
+ * @returns {Object} 返回可能存在的警告信息
  */
 export function saveManualAdjustmentsSilent() {
     let hasWarning = false;
     let warningMessages = [];
     
+    console.log('靜默保存手動調整數據...');
+    
     // 遍歷所有制服類型並更新庫存資料
     for (const type in manualAdjustments) {
         if (!manualAdjustments.hasOwnProperty(type)) continue;
         
         let typeTotal = 0; // 追蹤每種制服類型的總可分配數
+        let totalInventory = 0;
+        let totalReserved = 0;
+        
+        console.log(`處理制服類型: ${type}`);
         
         // 遍歷所有尺寸，包括沒有手動調整的尺寸
         for (const size in inventoryData[type]) {
             if (!inventoryData[type].hasOwnProperty(size)) continue;
             
             const total = inventoryData[type][size].total || 0;
+            totalInventory += total;
             let allocatable;
             
             // 檢查該尺寸是否有手動調整
             if (manualAdjustments[type] && manualAdjustments[type][size] !== undefined) {
                 // 使用手動調整的值
                 allocatable = Math.min(manualAdjustments[type][size], total);
+                console.log(`尺寸 ${size}: 使用手動調整值 - 總庫存=${total}, 調整值=${allocatable}`);
             } else {
-                // 使用原來計算的值（比例計算）
-                const ratioElem = document.getElementById(`${type}Ratio`);
-                let ratio = 0;
-                if (ratioElem) {
-                    const percentText = ratioElem.textContent || '0%';
-                    ratio = parseFloat(percentText) / 100 || 0;
-                }
-                allocatable = Math.round(total * ratio);
+                // 使用固定預留比例計算
+                const reservedQuantity = Math.ceil(total * RESERVE_RATIO);
+                allocatable = total - reservedQuantity;
+                console.log(`尺寸 ${size}: 使用計算值 - 總庫存=${total}, 預留比例=${RESERVE_RATIO}, 預留數=${reservedQuantity}, 可分配數=${allocatable}`);
             }
+            
+            // 計算預留數量
+            const reserved = total - allocatable;
+            totalReserved += reserved;
             
             // 更新庫存資料
             inventoryData[type][size].allocatable = allocatable;
-            inventoryData[type][size].reserved = total - allocatable;
+            inventoryData[type][size].reserved = reserved;
             
             // 累加可分配數
             typeTotal += allocatable;
+            
+            console.log(`尺寸 ${size}: 最終值 - 總庫存=${total}, 預留數=${reserved}, 可分配數=${allocatable}`);
         }
         
-        // 更新對應表格的UI
-        const tableId = inventoryTypeToTableId(type);
-        if (tableId) {
-            for (const size in inventoryData[type]) {
-                updateInventoryUI(tableId, size);
-            }
-        }
-
+        // 計算實際的預留比例
+        const actualReserveRatio = totalInventory > 0 ? (totalReserved / totalInventory * 100).toFixed(1) : '0.0';
+        console.log(`制服類型 ${type} 總計: 總庫存=${totalInventory}, 總預留數=${totalReserved}, 總可分配數=${typeTotal}, 實際預留比例=${actualReserveRatio}%`);
+        
         // 檢查當前制服類型的可分配數是否小於需求量
         const demand = demandData[type]?.totalDemand || 0;
-        if (typeTotal < demand) {
-            const uniformTypeName = UNIFORM_TYPES[type];
-            const shortfall = demand - typeTotal;
-            const message = `${uniformTypeName}：可分配數總和(${typeTotal})小於需求量(${demand})，差額${shortfall}件`;
-            console.warn(message);
-            warningMessages.push(message);
+        if (demand > 0 && typeTotal < demand) {
+            const deficit = demand - typeTotal;
+            const deficitPercent = ((deficit / demand) * 100).toFixed(1);
+            const warningMsg = `${UNIFORM_TYPES[type]}：可分配數總和(${typeTotal})小於需求量(${demand})，差額${deficit}件 (${deficitPercent}%)`;
+            console.warn(warningMsg);
+            warningMessages.push(warningMsg);
             hasWarning = true;
         }
-
-        // 更新表格
-        updateSizeTable(type);
     }
     
-    // 保存到本地儲存
-    saveToLocalStorage('inventoryData', inventoryData);
+    // 保存到本地儲存（但不顯示通知）
+    console.log('靜默保存手動調整數據到本地儲存');
     saveToLocalStorage('manualAdjustments', manualAdjustments);
+    saveToLocalStorage('inventoryData', inventoryData);
     
-    // 更新分配比率
-    updateAllocationRatios();
+    console.log('手動調整數據靜默保存完成');
     
-    // 不顯示任何通知，但仍返回警告信息以供調用方使用
-    return { hasWarning, warningMessages };
+    return {
+        hasWarning,
+        warningMessages
+    };
 }
 
 /**
