@@ -233,7 +233,7 @@
                                                 <td id="longSleevePantsDemand">0</td>
                                             </tr>
                                             <tr>
-                                                <td>預留比例<br>(固定10%)</td>
+                                                <td>分配比例<br>(需求/庫存)</td>
                                                 <td>-</td>
                                                 <td id="shortSleeveShirtRatio">0%</td>
                                                 <td id="shortSleevePantsRatio">0%</td>

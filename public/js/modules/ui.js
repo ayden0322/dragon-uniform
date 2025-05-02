@@ -3,7 +3,7 @@ import { saveToLocalStorage, loadFromLocalStorage, showAlert } from './utils.js'
 import { inventoryData, updateSizeTable, saveManualAdjustments, resetManualAdjustments } from './inventory.js';
 import { handleExcelImport, exportStudentData, downloadTemplate, clearStudentData, updateAdjustmentPage, demandData } from './students.js';
 import { startAllocation, updateAllocationResults } from './allocation.js';
-import { UNIFORM_TYPES } from './config.js';
+import { UNIFORM_TYPES, RESERVE_RATIO } from './config.js';
 
 /**
  * 設置匯入匯出按鈕功能
@@ -231,7 +231,7 @@ function setupSizeTabsEvents() {
  */
 export function updateAllocationRatios() {
     try {
-        // 獲取所有制服類型的需求和庫存總量
+        // 獲取所有制服類型的比例元素
         const ratioElements = {
             shortSleeveShirt: document.getElementById('shortSleeveShirtRatio'),
             shortSleevePants: document.getElementById('shortSleevePantsRatio'),
@@ -239,75 +239,36 @@ export function updateAllocationRatios() {
             longSleevePants: document.getElementById('longSleevePantsRatio')
         };
         
-        // 記錄比例是否變更
-        let ratioChanged = false;
-        const oldRatios = {};
-        
+        // 直接從 demandData 獲取需求數量
         for (const type in ratioElements) {
             if (!ratioElements[type]) continue;
             
-            // 儲存舊的比例值用於比較
-            if (ratioElements[type]) {
-                const oldPercentText = ratioElements[type].textContent || '0%';
-                oldRatios[type] = parseFloat(oldPercentText) / 100 || 0;
-            }
-            
-            // 直接從 demandData 獲取需求數量，而不是從 DOM 元素獲取
+            // 更新需求數量顯示
             let demand = 0;
             if (demandData && demandData[type] && demandData[type].totalDemand !== undefined) {
                 demand = demandData[type].totalDemand;
             }
             
-            // 同時更新 DOM 元素中的需求數量顯示，確保一致性
             const demandElem = document.getElementById(`${type}Demand`);
             if (demandElem) {
                 demandElem.textContent = demand;
             }
             
-            // 計算庫存總量
-            let totalInventory = 0;
-            if (inventoryData[type]) {
-                for (const size in inventoryData[type]) {
-                    if (inventoryData[type][size] && inventoryData[type][size].total) {
-                        totalInventory += inventoryData[type][size].total;
-                    }
-                }
-            }
+            // 設置固定的預留比例（10%）
+            ratioElements[type].textContent = (RESERVE_RATIO * 100).toFixed(0) + '%';
             
-            // 計算比率
-            let ratio = 0;
-            if (totalInventory > 0) {
-                ratio = demand / totalInventory;
-            }
-            
-            // 檢查比例是否變更
-            if (Math.abs(ratio - oldRatios[type]) > 0.0001) {
-                ratioChanged = true;
-            }
-            
-            // 格式化顯示
-            const formattedRatio = (ratio * 100).toFixed(1) + '%';
-            
-            // 更新UI
-            ratioElements[type].textContent = formattedRatio;
-            
-            // 設置顏色
-            if (ratio > 1) {
-                ratioElements[type].classList.add('text-danger');
-                ratioElements[type].classList.remove('text-success');
-            } else {
-                ratioElements[type].classList.remove('text-danger');
-                ratioElements[type].classList.add('text-success');
-            }
+            // 固定使用綠色樣式
+            ratioElements[type].classList.remove('text-danger');
+            ratioElements[type].classList.add('text-success');
         }
         
-        // 在更新了所有比例後，始終更新所有尺寸表格
+        // 更新所有尺寸表格
         updateSizeTable('shortSleeveShirt');
         updateSizeTable('shortSleevePants');
         updateSizeTable('longSleeveShirt');
         updateSizeTable('longSleevePants');
     } catch (error) {
-        console.error('更新分配比率時發生錯誤:', error);
+        console.error('更新預留比率時發生錯誤:', error);
     }
 }
 

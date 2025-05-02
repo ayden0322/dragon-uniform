@@ -133,4 +133,7 @@ export function inventoryTypeToTableId(type) {
         case 'longSleevePants': return 'longSleevePantsTable';
         default: return null;
     }
-} 
+}
+
+// 預留比例常數（10%）
+export const RESERVE_RATIO = 0.1; 
