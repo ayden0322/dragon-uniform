@@ -62,7 +62,7 @@ export const SCHOOL_CONFIGS = {
             longSleevePants: '長褲'
         },
         sizes: ['XS/34', 'S/36', 'M/38', 'L/40', 'XL/42', '2L/44', '3L/46', '4L/48', '5L/50', '6L/52', '7L/54', '8L/56', '9L/58'],
-        femaleChestAdjustment: -2
+        femaleChestAdjustment: 0
     },
     'sample': {
         name: '範例學校',
@@ -74,7 +74,7 @@ export const SCHOOL_CONFIGS = {
             sportShirt: '運動服'
         },
         sizes: ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'],
-        femaleChestAdjustment: -2.0
+        femaleChestAdjustment: 0
     }
 };
 
@@ -95,7 +95,7 @@ export function getCurrentSchoolConfig() {
  */
 export function getFemaleChestAdjustment() {
     const config = getCurrentSchoolConfig();
-    return config.femaleChestAdjustment || -1.5; // 預設值為-1.5cm
+    return config.femaleChestAdjustment || 0; // 預設值為0
 }
 
 /**

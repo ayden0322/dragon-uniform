@@ -332,10 +332,7 @@ export async function allocateLongSleevePants() {
  */
 function calculateEffectiveChest(student) {
     let effectiveChest = student.chest || 0;
-    // 女生胸圍調整，使用配置的調整值
-    if (student.gender === '女') {
-        effectiveChest += getFemaleChestAdjustment(); // 使用學校配置的調整值
-    }
+    // 女生胸圍調整已關閉，使用原始胸圍值
     // 如果腰圍大於胸圍，使用腰圍
     const waist = student.waist || 0;
     if (waist > effectiveChest) {

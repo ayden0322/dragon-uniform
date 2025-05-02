@@ -321,10 +321,7 @@ export function calculateUniformSizes() {
 function calculateShirtSize(student) {
     let chest = student.chest || 0;
     
-    // 女性胸圍調整，使用學校配置的調整值
-    if (student.gender === '女') {
-        chest += getFemaleChestAdjustment();
-    }
+    // 女性胸圍調整已關閉，直接使用原始胸圍值
     
     // 根據胸圍判定尺寸
     if (chest <= 0) return '';
