@@ -319,25 +319,42 @@ export function calculateUniformSizes() {
  * @returns {string} - 尺寸代碼
  */
 function calculateShirtSize(student) {
+    // 獲取有效胸圍（取胸圍和腰圍的最大值）
     let chest = student.chest || 0;
+    let waist = student.waist || 0;
+    let effectiveChest = Math.max(chest, waist);
     
-    // 女性胸圍調整已關閉，直接使用原始胸圍值
+    // 如果有效胸圍為0，返回空值
+    if (effectiveChest <= 0) return '';
     
-    // 根據胸圍判定尺寸
-    if (chest <= 0) return '';
+    // 根據性別選擇加值幅度
+    let adjustment = 0;
+    if (student.gender === '男') {
+        // 男生: 有效胸圍 + 10~12
+        // 如果有效胸圍是偶數，加10；如果是奇數，加11（確保結果為偶數）
+        adjustment = (effectiveChest % 2 === 0) ? 10 : 11;
+    } else {
+        // 女生: 有效胸圍 + 8~10
+        // 如果有效胸圍是偶數，加8；如果是奇數，加9（確保結果為偶數）
+        adjustment = (effectiveChest % 2 === 0) ? 8 : 9;
+    }
     
-    if (chest < 83) return 'XS/34';
-    if (chest < 87) return 'S/36';
-    if (chest < 91) return 'M/38';
-    if (chest < 95) return 'L/40';
-    if (chest < 99) return 'XL/42';
-    if (chest < 103) return '2L/44';
-    if (chest < 107) return '3L/46';
-    if (chest < 111) return '4L/48';
-    if (chest < 115) return '5L/50';
-    if (chest < 119) return '6L/52';
-    if (chest < 123) return '7L/54';
-    if (chest < 127) return '8L/56';
+    // 計算最終尺碼值
+    let sizeNumber = effectiveChest + adjustment;
+    
+    // 轉換為對應的尺碼代碼
+    if (sizeNumber <= 34) return 'XS/34';
+    if (sizeNumber <= 36) return 'S/36';
+    if (sizeNumber <= 38) return 'M/38';
+    if (sizeNumber <= 40) return 'L/40';
+    if (sizeNumber <= 42) return 'XL/42';
+    if (sizeNumber <= 44) return '2L/44';
+    if (sizeNumber <= 46) return '3L/46';
+    if (sizeNumber <= 48) return '4L/48';
+    if (sizeNumber <= 50) return '5L/50';
+    if (sizeNumber <= 52) return '6L/52';
+    if (sizeNumber <= 54) return '7L/54';
+    if (sizeNumber <= 56) return '8L/56';
     return '9L/58';
 }
 
