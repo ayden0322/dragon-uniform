@@ -1108,8 +1108,8 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
         const waistToSizeMap = [
             { min: 20, max: 21, size: "XS/34" }, 
             { min: 22, max: 24, size: "S/36" },
-            { min: 25, max: 27, size: "M/38", adjustedSize: "L/40", adjustCondition: (student) => student.gender === "男" && student.pantsLength == 40, adjustMark: "L/40↑" },
-            { min: 28, max: 30, size: "L/40", adjustedSize: "XL/42", adjustCondition: (student) => student.gender === "男" && student.pantsLength == 41, adjustMark: "XL/42↑" },
+            { min: 25, max: 27, size: "M/38", adjustedSize: "L/40", adjustCondition: (student) => student.gender === "男" && student.pantsLength >= 40, adjustMark: "L/40↑" },
+            { min: 28, max: 30, size: "L/40", adjustedSize: "XL/42", adjustCondition: (student) => student.gender === "男" && student.pantsLength >= 41, adjustMark: "XL/42↑" },
             { min: 31, max: 33, size: "XL/42" },
             { min: 34, max: 36, size: "2L/44" },
             { min: 37, max: 38, size: "3L/46" },
