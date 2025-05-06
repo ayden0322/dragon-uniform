@@ -2267,6 +2267,12 @@ function updateStudentDetailedResults() {
         const formattedLongShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
         const formattedLongPantsSize = student.allocatedLongPantsSize ? formatSize(student.allocatedLongPantsSize) : '-';
         
+        // 判斷是否為Debug模式
+        const isDebugMode = currentSizeDisplayMode === SIZE_DISPLAY_MODES.debug;
+        
+        // 簡化的分配失敗信息
+        const simplifiedFailureMessage = '分配失敗';
+        
         // 設置行內容
         row.innerHTML = `
             <td>${index + 1}</td>
@@ -2279,27 +2285,28 @@ function updateStudentDetailedResults() {
             <td>${student.pantsLength || ''}</td>
             <td>
                 ${formattedShirtSize}${student.isShirtSizeAdjustedForPantsLength ? '<sup>↑</sup>' : ''}
-                ${shortShirtFailReason ? `<div class="failure-reason">${shortShirtFailReason}</div>` : ''}
-                ${student.isShirtSizeAdjustedForPantsLength ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
-                ${student.shortShirtLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
+                ${shortShirtFailReason ? `<div class="failure-reason">${isDebugMode ? shortShirtFailReason : simplifiedFailureMessage}</div>` : ''}
+                ${isDebugMode && student.isShirtSizeAdjustedForPantsLength ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
+                ${isDebugMode && student.shortShirtLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedShirtSize ? (student.shortSleeveShirtCount || 1) : '-'}</td>
             <td>
                 ${student.pantsAdjustmentMark || formattedPantsSize}
-                ${shortPantsFailReason ? `<div class="failure-reason">${shortPantsFailReason}</div>` : ''}
-                ${student.shortPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
+                ${shortPantsFailReason ? `<div class="failure-reason">${isDebugMode ? shortPantsFailReason : simplifiedFailureMessage}</div>` : ''}
+                ${isDebugMode && student.shortPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedPantsSize ? (student.shortSleevePantsCount || 1) : '-'}</td>
             <td>
                 ${formattedLongShirtSize}${student.isLongShirtSizeAdjustedForPantsLength ? '<sup>↑</sup>' : ''}
-                ${longShirtFailReason ? `<div class="failure-reason">${longShirtFailReason}</div>` : ''}
-                ${student.isLongShirtSizeAdjustedForPantsLength ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
-                ${student.longShirtLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
+                ${longShirtFailReason ? `<div class="failure-reason">${isDebugMode ? longShirtFailReason : simplifiedFailureMessage}</div>` : ''}
+                ${isDebugMode && student.isLongShirtSizeAdjustedForPantsLength ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
+                ${isDebugMode && student.longShirtLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedLongShirtSize ? (student.longSleeveShirtCount || 1) : '-'}</td>
             <td>
                 ${student.longPantsAdjustmentMark || formattedLongPantsSize}
-                ${longPantsFailReason ? `<div class="failure-reason">${longPantsFailReason}</div>` : ''}
+                ${longPantsFailReason ? `<div class="failure-reason">${isDebugMode ? longPantsFailReason : simplifiedFailureMessage}</div>` : ''}
+                ${isDebugMode && student.longPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥3</div>` : ''}
             </td>
             <td class="count-column">${student.allocatedLongPantsSize ? (student.longSleevePantsCount || 1) : '-'}</td>
         `;
@@ -2790,6 +2797,9 @@ function exportAllocationResultsToExcel() {
             case SIZE_DISPLAY_MODES.number:
                 displayModeText = '尺碼';
                 break;
+            case SIZE_DISPLAY_MODES.debug:
+                displayModeText = 'Debug';
+                break;
             case SIZE_DISPLAY_MODES.both:
             default:
                 displayModeText = '完整';
@@ -2833,59 +2843,67 @@ function createStudentDetailWorksheet() {
         '長衣尺寸', '長衣件數', '長褲尺寸', '長褲件數'
     ]);
 
+    // 判斷是否為Debug模式
+    const isDebugMode = currentSizeDisplayMode === SIZE_DISPLAY_MODES.debug;
+    // 簡化的分配失敗信息
+    const simplifiedFailureMessage = '分配失敗';
+
     // 添加學生數據
     sortedStudents.forEach((student, index) => {
         // 處理各種制服的分配情況 - 使用formatSize函數格式化尺寸
         let shortShirtSize = student.allocatedShirtSize ? formatSize(student.allocatedShirtSize) : '-';
-        // 如果有褲長調整，添加標記
+        // 如果有褲長調整，添加標記 (只在Debug模式下顯示詳細原因)
         if (student.isShirtSizeAdjustedForPantsLength && shortShirtSize !== '-') {
-            shortShirtSize += '↑(褲長調整)';
+            shortShirtSize += '↑' + (isDebugMode ? '(褲長調整)' : '');
         }
-        // 如果短衣褲長仍不足，添加標記
-        if (student.shortShirtLengthDeficiency && shortShirtSize !== '-') {
+        // 如果短衣褲長仍不足，添加標記 (只在Debug模式下顯示)
+        if (isDebugMode && student.shortShirtLengthDeficiency && shortShirtSize !== '-') {
             shortShirtSize += '!(褲長仍不足≥2)';
         }
         
         let shortPantsSize = student.allocatedPantsSize ? formatSize(student.allocatedPantsSize) : '-';
         // 如果短褲有調整標記，優先使用標記
         if (student.pantsAdjustmentMark && shortPantsSize !== '-') {
-            shortPantsSize = student.pantsAdjustmentMark;
+            shortPantsSize = formatSize(student.pantsAdjustmentMark);
         }
-        // 移除對於短褲的一般褲長調整標記，只使用特定標記
-        // 如果短褲褲長仍不足，添加標記
-        if (student.shortPantsLengthDeficiency && shortPantsSize !== '-') {
+        // 如果短褲褲長仍不足，添加標記 (只在Debug模式下顯示)
+        if (isDebugMode && student.shortPantsLengthDeficiency && shortPantsSize !== '-') {
             shortPantsSize += '!(褲長仍不足≥2)';
         }
         
         let longShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
-        // 如果長衣有褲長調整，添加標記
+        // 如果長衣有褲長調整，添加標記 (只在Debug模式下顯示詳細原因)
         if (student.isLongShirtSizeAdjustedForPantsLength && longShirtSize !== '-') {
-            longShirtSize += '↑(褲長調整)';
+            longShirtSize += '↑' + (isDebugMode ? '(褲長調整)' : '');
         }
-        // 如果長衣褲長仍不足，添加標記
-        if (student.longShirtLengthDeficiency && longShirtSize !== '-') {
+        // 如果長衣褲長仍不足，添加標記 (只在Debug模式下顯示)
+        if (isDebugMode && student.longShirtLengthDeficiency && longShirtSize !== '-') {
             longShirtSize += '!(褲長仍不足≥2)';
         }
         
         let longPantsSize = student.allocatedLongPantsSize ? formatSize(student.allocatedLongPantsSize) : '-';
         // 如果長褲有調整標記，優先使用調整標記
         if (student.longPantsAdjustmentMark && longPantsSize !== '-') {
-            longPantsSize = student.longPantsAdjustmentMark;
+            longPantsSize = formatSize(student.longPantsAdjustmentMark);
+        }
+        // 如果長褲褲長仍不足，添加標記 (只在Debug模式下顯示)
+        if (isDebugMode && student.longPantsLengthDeficiency && longPantsSize !== '-') {
+            longPantsSize += '!(褲長仍不足≥3)';
         }
         
-        // 如果有分配失敗原因，直接顯示在對應欄位
+        // 如果有分配失敗原因，根據顯示模式決定顯示內容
         if (student.allocationFailReason) {
             if (student.allocationFailReason.shortSleeveShirt && !student.allocatedShirtSize) {
-                shortShirtSize = student.allocationFailReason.shortSleeveShirt;
+                shortShirtSize = isDebugMode ? student.allocationFailReason.shortSleeveShirt : simplifiedFailureMessage;
             }
             if (student.allocationFailReason.shortSleevePants && !student.allocatedPantsSize) {
-                shortPantsSize = student.allocationFailReason.shortSleevePants;
+                shortPantsSize = isDebugMode ? student.allocationFailReason.shortSleevePants : simplifiedFailureMessage;
             }
             if (student.allocationFailReason.longSleeveShirt && !student.allocatedLongShirtSize) {
-                longShirtSize = student.allocationFailReason.longSleeveShirt;
+                longShirtSize = isDebugMode ? student.allocationFailReason.longSleeveShirt : simplifiedFailureMessage;
             }
             if (student.allocationFailReason.longSleevePants && !student.allocatedLongPantsSize) {
-                longPantsSize = student.allocationFailReason.longSleevePants;
+                longPantsSize = isDebugMode ? student.allocationFailReason.longSleevePants : simplifiedFailureMessage;
             }
         }
 

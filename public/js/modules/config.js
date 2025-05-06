@@ -5,7 +5,8 @@ export const SIZES = ['XS/34', 'S/36', 'M/38', 'L/40', 'XL/42', '2L/44', '3L/46'
 export const SIZE_DISPLAY_MODES = {
     both: 'both',    // 同時顯示尺寸和尺碼 (XS/34)
     size: 'size',    // 僅顯示尺寸 (XS)
-    number: 'number' // 僅顯示尺碼 (34)
+    number: 'number', // 僅顯示尺碼 (34)
+    debug: 'debug'   // Debug模式（顯示詳細錯誤信息）
 };
 
 // 默認尺寸顯示模式
