@@ -1,0 +1,5 @@
+console.warn(`學生 [\${student.id}] 無法分配短褲：找不到合適的尺碼或庫存不足`);
+                    // 設置失敗原因
+                    student.allocationFailReason = student.allocationFailReason || {};
+                    student.allocationFailReason[inventoryType] = "無法分配：找不到合適尺碼";
+                    continue;

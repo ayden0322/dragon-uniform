@@ -1,0 +1,1 @@
+            <td>${formattedPantsSize}${shortPantsFailReason ? `<div class="failure-reason">${shortPantsFailReason}</div>` : ""}<!-- 已註釋：褲長調整相關顯示 --></td>
