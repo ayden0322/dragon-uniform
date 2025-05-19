@@ -1910,6 +1910,25 @@ function updateStudentDetailedResults() {
             shirtMark = '↑';
         }
         
+        // Determine display marks for pants, prioritizing '*' if present in allocated string
+        let displayShortPantsMark = '';
+        if (student.allocatedPantsSize) {
+            if (student.allocatedPantsSize.endsWith('*')) {
+                displayShortPantsMark = '*';
+            } else if (student.pantsAdjustmentMark) {
+                displayShortPantsMark = student.pantsAdjustmentMark;
+            }
+        }
+
+        let displayLongPantsMark = '';
+        if (student.allocatedLongPantsSize) {
+            if (student.allocatedLongPantsSize.endsWith('*')) {
+                displayLongPantsMark = '*';
+            } else if (student.longPantsAdjustmentMark) {
+                displayLongPantsMark = student.longPantsAdjustmentMark;
+            }
+        }
+        
         const isDebugMode = currentSizeDisplayMode === SIZE_DISPLAY_MODES.debug;
         const simplifiedFailureMessage = '分配失敗';
         
@@ -1930,7 +1949,7 @@ function updateStudentDetailedResults() {
             </td>
             <td class="count-column">${student.shortSleeveShirtCount != null ? student.shortSleeveShirtCount : '-'}</td>
             <td>
-                ${formattedPantsSize}${student.pantsAdjustmentMark ? `<span class="allocation-mark">${student.pantsAdjustmentMark}</span>` : ''} 
+                ${formattedPantsSize}${displayShortPantsMark ? `<span class="allocation-mark">${displayShortPantsMark}</span>` : ''} 
                 ${shortPantsFailReason ? `<div class="failure-reason">${isDebugMode ? shortPantsFailReason : simplifiedFailureMessage}</div>` : ''}
                 ${isDebugMode && student.isPantsLengthAdjusted ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
                 ${isDebugMode && student.shortPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
@@ -1944,7 +1963,7 @@ function updateStudentDetailedResults() {
             </td>
             <td class="count-column">${student.longSleeveShirtCount != null ? student.longSleeveShirtCount : '-'}</td>
             <td>
-                ${formattedLongPantsSize}${student.longPantsAdjustmentMark ? `<span class="allocation-mark">${student.longPantsAdjustmentMark}</span>` : ''} 
+                ${formattedLongPantsSize}${displayLongPantsMark ? `<span class="allocation-mark">${displayLongPantsMark}</span>` : ''} 
                 ${longPantsFailReason ? `<div class="failure-reason">${isDebugMode ? longPantsFailReason : simplifiedFailureMessage}</div>` : ''}
                 ${isDebugMode && student.isLongPantsSizeAdjustedForPantsLength ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
                 ${isDebugMode && student.longPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥3</div>` : ''}
@@ -2503,14 +2522,33 @@ function createStudentDetailWorksheet() {
             shortShirtSize += '!(褲長仍不足≥2)';
         }
         
-        let shortPantsSize = student.allocatedPantsSize ? formatSize(student.allocatedPantsSize) : '-';
-        // 如果短褲有調整標記 (e.g., '↑')，並且原始分配的尺寸存在且不是以 '*' 結尾 (非補救)
-        if (student.pantsAdjustmentMark && shortPantsSize !== '-' && student.allocatedPantsSize && !student.allocatedPantsSize.endsWith('*')) {
-            shortPantsSize += student.pantsAdjustmentMark;
+        // 修改短褲尺寸處理邏輯
+        let shortPantsSize;
+        if (student.allocatedPantsSize) {
+            shortPantsSize = formatSize(student.allocatedPantsSize); // 格式化後的基本尺寸, e.g., "34"
+            const originalAllocatedPantsValue = student.allocatedPantsSize; // 原始分配值, e.g., "XS/34*"
+
+            // 如果原始分配值以 '*' 結尾 (補救標記)
+            if (originalAllocatedPantsValue.endsWith('*')) {
+                // 確保 '*' 被加到格式化後的尺寸上 (如果 formatSize 移除了它)
+                if (shortPantsSize !== '-' && !shortPantsSize.endsWith('*')) {
+                    shortPantsSize += '*';
+                }
+            }
+            // 否則，如果不是補救分配，檢查是否有 pantsAdjustmentMark (如 '↑')
+            else if (student.pantsAdjustmentMark) {
+                shortPantsSize += student.pantsAdjustmentMark;
+            }
+        } else {
+            shortPantsSize = '-';
         }
+
         // 如果短褲褲長仍不足，添加標記 (只在Debug模式下顯示)
         if (isDebugMode && student.shortPantsLengthDeficiency && shortPantsSize !== '-') {
-            shortPantsSize += '!(褲長仍不足≥2)';
+            // 僅在 student.allocatedPantsSize 存在 (即有分配嘗試) 時附加
+            if (student.allocatedPantsSize) {
+                 shortPantsSize += '!(褲長仍不足≥2)';
+            }
         }
         
         let longShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
@@ -2523,14 +2561,33 @@ function createStudentDetailWorksheet() {
             longShirtSize += '!(褲長仍不足≥2)';
         }
         
-        let longPantsSize = student.allocatedLongPantsSize ? formatSize(student.allocatedLongPantsSize) : '-';
-        // 如果長褲有調整標記 (e.g., '↑')，並且原始分配的尺寸存在且不是以 '*' 結尾 (非補救)
-        if (student.longPantsAdjustmentMark && longPantsSize !== '-' && student.allocatedLongPantsSize && !student.allocatedLongPantsSize.endsWith('*')) {
-            longPantsSize += student.longPantsAdjustmentMark;
+        // 修改長褲尺寸處理邏輯
+        let longPantsSize;
+        if (student.allocatedLongPantsSize) {
+            longPantsSize = formatSize(student.allocatedLongPantsSize); // 格式化後的基本尺寸
+            const originalAllocatedLongPantsValue = student.allocatedLongPantsSize; // 原始分配值
+
+            // 如果原始分配值以 '*' 結尾 (補救標記)
+            if (originalAllocatedLongPantsValue.endsWith('*')) {
+                // 確保 '*' 被加到格式化後的尺寸上
+                if (longPantsSize !== '-' && !longPantsSize.endsWith('*')) {
+                    longPantsSize += '*';
+                }
+            }
+            // 否則，如果不是補救分配，檢查是否有 longPantsAdjustmentMark
+            else if (student.longPantsAdjustmentMark) {
+                longPantsSize += student.longPantsAdjustmentMark;
+            }
+        } else {
+            longPantsSize = '-';
         }
+
         // 如果長褲褲長仍不足，添加標記 (只在Debug模式下顯示)
         if (isDebugMode && student.longPantsLengthDeficiency && longPantsSize !== '-') {
-            longPantsSize += '!(褲長仍不足≥3)';
+            // 僅在 student.allocatedLongPantsSize 存在 (即有分配嘗試) 時附加
+            if (student.allocatedLongPantsSize) {
+                longPantsSize += '!(褲長仍不足≥3)';
+            }
         }
         
         // 如果有分配失敗原因，根據顯示模式決定顯示內容
