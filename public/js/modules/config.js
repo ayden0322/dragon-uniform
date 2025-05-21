@@ -137,4 +137,56 @@ export function inventoryTypeToTableId(type) {
 }
 
 // 預留比例常數（10%）
-export const RESERVE_RATIO = 0.1; 
+export const RESERVE_RATIO = 0.1;
+
+// 各品項的預留比例設定
+export const RESERVATION_RATIOS = {
+    shortSleeveShirt: { // 短袖上衣
+        type: 'fixed', // 固定比例
+        defaultRatio: 0.10, // 10%
+        displayName: '固定預留比例'
+    },
+    longSleeveShirt: { // 長袖上衣
+        type: 'fixed',
+        defaultRatio: 0.10, // 10%
+        displayName: '固定預留比例'
+    },
+    shortSleevePants: { // 短袖褲子
+        type: 'sized', // 按尺寸比例
+        displayName: '預留比例',
+        ratios: {
+            'XS/34': 0.02, // 2%
+            'S/36': 0.03,  // 3%
+            'M/38': 0.18,  // 18%
+            'L/40': 0.18,  // 18%
+            'XL/42': 0.23, // 23%
+            '2L/44': 0.13, // 13%
+            '3L/46': 0.11, // 11%
+            '4L/48': 0.06, // 6%
+            '5L/50': 0.00, // 0%
+            '6L/52': 0.06, // 6%
+            '7L/54': 0.00, // 0%
+            '8L/56': 0.00, // 0%
+            '9L/58': 0.00  // 0%
+        }
+    },
+    longSleevePants: { // 長袖褲子
+        type: 'sized',
+        displayName: '預留比例',
+        ratios: {
+            'XS/34': 0.00, // 0%
+            'S/36': 0.04,  // 4%
+            'M/38': 0.19,  // 19%
+            'L/40': 0.19,  // 19%
+            'XL/42': 0.21, // 21%
+            '2L/44': 0.14, // 14%
+            '3L/46': 0.11, // 11%
+            '4L/48': 0.06, // 6%
+            '5L/50': 0.00, // 0%
+            '6L/52': 0.06, // 6%
+            '7L/54': 0.00, // 0%
+            '8L/56': 0.00, // 0%
+            '9L/58': 0.00  // 0%
+        }
+    }
+}; 

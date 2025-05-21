@@ -1,5 +1,5 @@
 // 庫存相關功能模組
-import { SIZES, tableIdToInventoryType, inventoryTypeToTableId, UNIFORM_TYPES, formatSize, RESERVE_RATIO } from './config.js';
+import { SIZES, tableIdToInventoryType, inventoryTypeToTableId, UNIFORM_TYPES, formatSize, RESERVE_RATIO, RESERVATION_RATIOS } from './config.js';
 import { saveToLocalStorage, loadFromLocalStorage, showAlert } from './utils.js';
 import { updateAllocationRatios } from './ui.js';
 import { demandData } from './students.js';
@@ -197,32 +197,53 @@ export function loadInventoryData(tableId) {
 }
 
 /**
- * 計算預留數量 - 使用固定預留比例10%
- * @param {Object} inventoryData - 庫存資料
- * @param {Object} demandData - 需求資料
- * @param {Object} manualAdjustments - 手動調整資料
+ * 計算預留數量
+ * @param {Object} inventoryData - 庫存數據
+ * @param {Object} demandData - 需求數據
+ * @param {Object} manualAdjustments - 手動調整數據
  */
 export function calculateReservedQuantities(inventoryData, demandData, manualAdjustments) {
-    console.log('開始計算預留數量（使用固定預留比例10%）...');
+    console.log('開始計算預留數量...');
     
     // 處理每種制服類型
-    for (const type in inventoryData) {
-        if (!inventoryData.hasOwnProperty(type)) continue;
-        
+    for (const type in UNIFORM_TYPES) {
         console.log(`處理制服類型: ${type}`);
+        
+        // 獲取該品項的預留比例設置
+        const ratioConfig = RESERVATION_RATIOS[type];
+        const isFixedRatio = ratioConfig.type === 'fixed';
+        
         let typeTotal = 0;
         let typeReserved = 0;
         let typeAllocatable = 0;
         
-        // 計算每個尺寸
+        // 計算該品項的總庫存和總需求
+        let itemTotalInventory = 0;
+        let itemTotalDemand = 0;
+        
+        // 計算該品項的總庫存
         for (const size in inventoryData[type]) {
-            if (!inventoryData[type].hasOwnProperty(size)) continue;
-            
+            itemTotalInventory += inventoryData[type][size].total || 0;
+        }
+        
+        // 獲取學生對該品項的總需求
+        if (demandData && demandData[type] && demandData[type].totalDemand !== undefined) {
+            itemTotalDemand = demandData[type].totalDemand;
+        }
+        
+        // 計算可用於預留的基數（對短褲和長褲）
+        const reservationBase = Math.max(0, itemTotalInventory - itemTotalDemand);
+        
+        // 檢查是否需要顯示警告（學生需求數大於庫存總數）
+        const showAlertForShortage = itemTotalInventory < itemTotalDemand;
+        
+        // 處理每個尺寸
+        for (const size in inventoryData[type]) {
             const totalInventory = inventoryData[type][size].total || 0;
-            typeTotal += totalInventory;
-            
             let allocatable = 0;
             let reserved = 0;
+            
+            typeTotal += totalInventory;
             
             // 檢查是否有手動調整
             if (manualAdjustments && 
@@ -234,11 +255,26 @@ export function calculateReservedQuantities(inventoryData, demandData, manualAdj
                 reserved = totalInventory - allocatable;
                 console.log(`尺寸 ${size}: 使用手動調整值 - 總庫存=${totalInventory}, 手動調整值=${allocatable}, 預留數=${reserved}`);
             } else {
-                // 計算預留數量（無條件進位）
-                reserved = Math.ceil(totalInventory * RESERVE_RATIO);
+                // 計算預留數量
+                if (isFixedRatio) {
+                    // 短衣和長衣：直接使用尺寸的總庫存乘以固定比例
+                    const ratio = ratioConfig.defaultRatio;
+                    reserved = Math.ceil(totalInventory * ratio);
+                    console.log(`尺寸 ${size}: 使用固定比例計算預留數 - 總庫存=${totalInventory}, 預留比例=${ratio}, 預留數=${reserved}`);
+                } else {
+                    // 短褲和長褲：基於(總庫存-學生需求)的差額乘以該尺寸的預留比例
+                    const ratio = ratioConfig.ratios[size] || 0;
+                    if (!showAlertForShortage) {
+                        reserved = Math.ceil(reservationBase * ratio);
+                    } else {
+                        // 如果學生需求大於總庫存，則預留數量為0
+                        reserved = 0;
+                    }
+                    console.log(`尺寸 ${size}: 使用尺寸預留比例計算預留數 - 差額基數=${reservationBase}, 預留比例=${ratio}, 預留數=${reserved}`);
+                }
+                
                 // 計算可分配數量
                 allocatable = totalInventory - reserved;
-                console.log(`尺寸 ${size}: 計算預留數 - 總庫存=${totalInventory}, 預留比例=${RESERVE_RATIO}, 預留數=${reserved}, 可分配數=${allocatable}`);
             }
             
             // 確保可分配數量不超過總庫存且不小於0
@@ -259,18 +295,12 @@ export function calculateReservedQuantities(inventoryData, demandData, manualAdj
             // 更新庫存資料
             inventoryData[type][size].allocatable = allocatable;
             inventoryData[type][size].reserved = reserved;
-            
-            console.log(`尺寸 ${size}: 最終值 - 總庫存=${totalInventory}, 預留數=${reserved}, 可分配數=${allocatable}`);
         }
         
-        // 輸出制服類型總計
-        const actualReserveRatio = typeTotal > 0 ? (typeReserved / typeTotal * 100).toFixed(1) : '0.0';
-        console.log(`制服類型 ${type} 總計: 總庫存=${typeTotal}, 總預留數=${typeReserved}, 總可分配數=${typeAllocatable}, 實際預留比例=${actualReserveRatio}%`);
+        // 計算實際預留比例
+        const actualReserveRatio = typeTotal > 0 ? (typeReserved / typeTotal) : 0;
+        console.log(`制服類型 ${type} 總計: 總庫存=${typeTotal}, 總預留數=${typeReserved}, 總可分配數=${typeAllocatable}, 實際預留比例=${(actualReserveRatio * 100).toFixed(1)}%`);
     }
-    
-    // 保存到本地儲存
-    saveToLocalStorage('inventoryData', inventoryData);
-    console.log('預留數量計算完成，已更新庫存資料');
     
     return inventoryData;
 }
@@ -301,11 +331,13 @@ export function updateSizeTable(type) {
 
     const tbody = table.querySelector('tbody');
     tbody.innerHTML = '';
-
-    // 使用固定的預留比例10%
-    const reserveRatio = RESERVE_RATIO; // 10%
     
-    console.log(`更新尺寸表格: ${type}, 使用預留比例=${reserveRatio*100}%`);
+    // 獲取該品項的預留比例設置
+    const ratioConfig = RESERVATION_RATIOS[type];
+    const isFixedRatio = ratioConfig.type === 'fixed';
+    const displayColumnName = ratioConfig.displayName;
+    
+    console.log(`更新尺寸表格: ${type}, 預留比例類型=${ratioConfig.type}, 顯示名稱=${displayColumnName}`);
 
     // 初始化總數計數器
     let totalInventory = 0;
@@ -313,6 +345,30 @@ export function updateSizeTable(type) {
     let totalManualAdjustment = 0;
     let totalAdjustedAllocatable = 0;
     let totalReserved = 0;
+    
+    // 計算該品項的總庫存和總需求
+    let itemTotalInventory = 0;
+    let itemTotalDemand = 0;
+    
+    // 計算該品項的總庫存
+    for (const size of SIZES) {
+        if (!inventoryData[type][size]) continue;
+        itemTotalInventory += inventoryData[type][size].total || 0;
+    }
+    
+    // 獲取學生對該品項的總需求
+    if (demandData && demandData[type] && demandData[type].totalDemand !== undefined) {
+        itemTotalDemand = demandData[type].totalDemand;
+    }
+    
+    // 計算可用於預留的基數（對短褲和長褲）
+    const reservationBase = Math.max(0, itemTotalInventory - itemTotalDemand);
+    
+    // 檢查是否需要顯示警告（學生需求數大於庫存總數）
+    const showAlertForShortage = itemTotalInventory < itemTotalDemand;
+    if (showAlertForShortage && !isFixedRatio) {
+        showAlert(`【${UNIFORM_TYPES[type]}】的學生需求數 (${itemTotalDemand}) 大於總庫存數 (${itemTotalInventory})，請檢查及調整！`, 'warning');
+    }
 
     // 為每個尺寸添加行
     for (const size of SIZES) {
@@ -321,8 +377,36 @@ export function updateSizeTable(type) {
         const data = inventoryData[type][size];
         const total = data.total || 0;
         
-        // 使用固定預留比例計算預留數量（無條件進位）
-        const reservedQuantity = Math.ceil(total * reserveRatio);
+        // 計算並格式化當前尺寸的預留比例
+        let displayRatioPercent = 0;
+        let actualRatio = 0;
+        
+        if (isFixedRatio) {
+            // 短衣和長衣：固定比例
+            displayRatioPercent = ratioConfig.defaultRatio * 100;
+            actualRatio = ratioConfig.defaultRatio;
+        } else {
+            // 短褲和長褲：按尺寸的預留比例
+            displayRatioPercent = (ratioConfig.ratios[size] || 0) * 100;
+            actualRatio = ratioConfig.ratios[size] || 0;
+        }
+        
+        // 計算預留數量
+        let reservedQuantity = 0;
+        
+        if (isFixedRatio) {
+            // 短衣和長衣：直接使用尺寸的總庫存乘以固定比例
+            reservedQuantity = Math.ceil(total * actualRatio);
+        } else {
+            // 短褲和長褲：基於(總庫存-學生需求)的差額乘以該尺寸的預留比例
+            if (!showAlertForShortage) {
+                reservedQuantity = Math.ceil(reservationBase * actualRatio);
+            } else {
+                // 如果學生需求大於總庫存，則預留數量為0（紅色的0）
+                reservedQuantity = 0;
+            }
+        }
+        
         // 計算可分配數量
         const calculatedAllocatable = total - reservedQuantity;
         
@@ -355,9 +439,14 @@ export function updateSizeTable(type) {
         // 創建行
         const row = document.createElement('tr');
         row.dataset.size = size;
+        
+        // 決定預留數量顯示的樣式（如果學生需求大於總庫存且非固定比例，則顯示紅色的0）
+        const reservedStyle = !isFixedRatio && showAlertForShortage ? 'style="color: red; font-weight: bold;"' : '';
+        
         row.innerHTML = `
             <td data-original-size="${size}">${formatSize(size)}</td>
             <td>${total}</td>
+            <td>${displayRatioPercent.toFixed(0)}%</td>
             <td>${calculatedAllocatable}</td>
             <td class="adjustment-cell">
                 <div class="input-group adjustment-group">
@@ -374,7 +463,7 @@ export function updateSizeTable(type) {
                 </div>
             </td>
             <td class="adjusted-allocatable">${adjustedAllocatable}</td>
-            <td class="reserved">${reserved}</td>
+            <td class="reserved" ${reservedStyle}>${isFixedRatio ? reserved : (showAlertForShortage ? 0 : reserved)}</td>
         `;
         
         tbody.appendChild(row);
@@ -451,6 +540,7 @@ export function updateSizeTable(type) {
     totalRow.innerHTML = `
         <td><strong>總計</strong></td>
         <td><strong>${totalInventory}</strong></td>
+        <td><strong>-</strong></td>
         <td><strong>${totalCalculatedAllocatable}</strong></td>
         <td><strong>${totalManualAdjustment}</strong></td>
         <td><strong>${totalAdjustedAllocatable}</strong></td>
@@ -486,7 +576,7 @@ function manualUpdateTotalRow(type, table) {
     const rows = table.querySelectorAll('tbody tr:not(.total-row)');
     for (const row of rows) {
         const total = parseInt(row.querySelector('td:nth-child(2)').textContent) || 0;
-        const calculatedAllocatable = parseInt(row.querySelector('td:nth-child(3)').textContent) || 0;
+        const calculatedAllocatable = parseInt(row.querySelector('td:nth-child(4)').textContent) || 0; // 注意：預留比例欄位插入後，索引變為4
         const manualAdjustment = parseInt(row.querySelector('.manual-adjustment').value) || 0;
         const adjustedAllocatable = parseInt(row.querySelector('.adjusted-allocatable').textContent) || 0;
         const reserved = parseInt(row.querySelector('.reserved').textContent) || 0;
@@ -498,19 +588,18 @@ function manualUpdateTotalRow(type, table) {
         totalReserved += reserved;
     }
     
-    // 更新總計行
-    totalRow.innerHTML = `
-        <td><strong>總計</strong></td>
-        <td><strong>${totalInventory}</strong></td>
-        <td><strong>${totalCalculatedAllocatable}</strong></td>
-        <td><strong>${totalManualAdjustment}</strong></td>
-        <td><strong>${totalAdjustedAllocatable}</strong></td>
-        <td><strong>${totalReserved}</strong></td>
-    `;
+    // 更新總計行內容
+    if (totalRow.children.length >= 7) { // 確保總計行有足夠的單元格
+        totalRow.children[1].innerHTML = `<strong>${totalInventory}</strong>`;
+        totalRow.children[3].innerHTML = `<strong>${totalCalculatedAllocatable}</strong>`; // 注意：預留比例欄位插入後，索引變為3
+        totalRow.children[4].innerHTML = `<strong>${totalManualAdjustment}</strong>`;
+        totalRow.children[5].innerHTML = `<strong>${totalAdjustedAllocatable}</strong>`;
+        totalRow.children[6].innerHTML = `<strong>${totalReserved}</strong>`;
+    }
 }
 
 /**
- * 更新總計行 - 使用固定預留比例10%計算總需求和庫存
+ * 更新總計行
  * @param {string} type - 制服類型
  */
 function updateTotalRow(type) {
@@ -536,9 +625,49 @@ function updateTotalRow(type) {
         let adjustedAllocatable = 0;
         let reserved = 0;
         
-        // 使用固定的預留比例10%
-        // 計算預留數量（無條件進位）
-        const reservedQuantity = Math.ceil(total * RESERVE_RATIO);
+        // 獲取預留比例設置
+        const ratioConfig = RESERVATION_RATIOS[type];
+        const isFixedRatio = ratioConfig.type === 'fixed';
+        
+        // 計算該品項的總庫存和總需求（僅用於按尺寸預留比例的情況）
+        let itemTotalInventory = 0;
+        let itemTotalDemand = 0;
+        let reservationBase = 0;
+        let showAlertForShortage = false;
+        
+        if (!isFixedRatio) {
+            // 計算該品項的總庫存
+            for (const s in inventoryData[type]) {
+                itemTotalInventory += inventoryData[type][s].total || 0;
+            }
+            
+            // 獲取學生對該品項的總需求
+            if (demandData && demandData[type] && demandData[type].totalDemand !== undefined) {
+                itemTotalDemand = demandData[type].totalDemand;
+            }
+            
+            // 計算可用於預留的基數（對短褲和長褲）
+            reservationBase = Math.max(0, itemTotalInventory - itemTotalDemand);
+            showAlertForShortage = itemTotalInventory < itemTotalDemand;
+        }
+        
+        // 計算預留數量
+        let reservedQuantity = 0;
+        
+        if (isFixedRatio) {
+            // 短衣和長衣：直接使用尺寸的總庫存乘以固定比例
+            reservedQuantity = Math.ceil(total * ratioConfig.defaultRatio);
+        } else {
+            // 短褲和長褲：基於(總庫存-學生需求)的差額乘以該尺寸的預留比例
+            if (!showAlertForShortage) {
+                const ratio = ratioConfig.ratios[size] || 0;
+                reservedQuantity = Math.ceil(reservationBase * ratio);
+            } else {
+                // 如果學生需求大於總庫存，則預留數量為0
+                reservedQuantity = 0;
+            }
+        }
+        
         // 計算可分配數量
         calculatedAllocatable = total - reservedQuantity;
         
@@ -565,6 +694,7 @@ function updateTotalRow(type) {
         totalRow.innerHTML = `
             <td><strong>總計</strong></td>
             <td><strong>${totalInventory}</strong></td>
+            <td><strong>-</strong></td>
             <td><strong>${totalCalculatedAllocatable}</strong></td>
             <td><strong>${totalManualAdjustment}</strong></td>
             <td><strong>${totalAdjustedAllocatable}</strong></td>
@@ -590,6 +720,36 @@ export function saveManualAdjustments() {
         let totalInventory = 0;
         let totalReserved = 0;
         
+        // 獲取該品項的預留比例設置
+        const ratioConfig = RESERVATION_RATIOS[type];
+        const isFixedRatio = ratioConfig.type === 'fixed';
+        
+        // 計算該品項的總庫存和總需求
+        let itemTotalInventory = 0;
+        let itemTotalDemand = 0;
+        
+        // 計算該品項的總庫存
+        for (const size in inventoryData[type]) {
+            itemTotalInventory += inventoryData[type][size].total || 0;
+        }
+        
+        // 獲取學生對該品項的總需求
+        if (demandData && demandData[type] && demandData[type].totalDemand !== undefined) {
+            itemTotalDemand = demandData[type].totalDemand;
+        }
+        
+        // 計算可用於預留的基數（對短褲和長褲）
+        const reservationBase = Math.max(0, itemTotalInventory - itemTotalDemand);
+        
+        // 檢查是否需要顯示警告（學生需求數大於庫存總數）
+        const showAlertForShortage = itemTotalInventory < itemTotalDemand && !isFixedRatio;
+        if (showAlertForShortage) {
+            const warningMsg = `【${UNIFORM_TYPES[type]}】的學生需求數 (${itemTotalDemand}) 大於總庫存數 (${itemTotalInventory})，請檢查及調整！`;
+            console.warn(warningMsg);
+            warningMessages.push(warningMsg);
+            hasWarning = true;
+        }
+        
         console.log(`處理制服類型: ${type}`);
         
         // 遍歷所有尺寸，包括沒有手動調整的尺寸
@@ -606,10 +766,28 @@ export function saveManualAdjustments() {
                 allocatable = Math.min(manualAdjustments[type][size], total);
                 console.log(`尺寸 ${size}: 使用手動調整值 - 總庫存=${total}, 調整值=${allocatable}`);
             } else {
-                // 使用固定預留比例計算
-                const reservedQuantity = Math.ceil(total * RESERVE_RATIO);
-                allocatable = total - reservedQuantity;
-                console.log(`尺寸 ${size}: 使用計算值 - 總庫存=${total}, 預留比例=${RESERVE_RATIO}, 預留數=${reservedQuantity}, 可分配數=${allocatable}`);
+                // 計算預留數量
+                let reserved = 0;
+                
+                if (isFixedRatio) {
+                    // 短衣和長衣：直接使用尺寸的總庫存乘以固定比例
+                    const ratio = ratioConfig.defaultRatio;
+                    reserved = Math.ceil(total * ratio);
+                    console.log(`尺寸 ${size}: 使用固定比例計算預留數 - 總庫存=${total}, 預留比例=${ratio}, 預留數=${reserved}`);
+                } else {
+                    // 短褲和長褲：基於(總庫存-學生需求)的差額乘以該尺寸的預留比例
+                    const ratio = ratioConfig.ratios[size] || 0;
+                    if (!showAlertForShortage) {
+                        reserved = Math.ceil(reservationBase * ratio);
+                    } else {
+                        // 如果學生需求大於總庫存，則預留數量為0
+                        reserved = 0;
+                    }
+                    console.log(`尺寸 ${size}: 使用尺寸預留比例計算預留數 - 差額基數=${reservationBase}, 預留比例=${ratio}, 預留數=${reserved}`);
+                }
+                
+                // 計算可分配數量
+                allocatable = total - reserved;
             }
             
             // 計算預留數量
@@ -659,21 +837,15 @@ export function saveManualAdjustments() {
     // 更新分配比率
     updateAllocationRatios();
     
-    // 顯示通知
+    // 顯示警告
     if (hasWarning) {
-        const message = `<strong>警告</strong>：部分制服類型的可分配數小於需求量，可能導致無法完全分配。<br><br>` + 
-                         warningMessages.map(msg => `• ${msg}`).join('<br>');
-        showAlert(message, 'warning', 10000);  // 顯示10秒
+        const warningText = warningMessages.join('\n');
+        showAlert(warningText, 'warning');
     } else {
-        showAlert('預留調整已保存', 'success');
+        showAlert('手動調整已保存', 'success');
     }
     
-    console.log('手動調整數據保存完成');
-    
-    return {
-        hasWarning,
-        warningMessages
-    };
+    return true;
 }
 
 /**
@@ -763,28 +935,31 @@ export function saveManualAdjustmentsSilent() {
  * 重置手動調整
  */
 export function resetManualAdjustments() {
-    // 清空手動調整資料
-    manualAdjustments = {
-        shortSleeveShirt: {},
-        shortSleevePants: {},
-        longSleeveShirt: {},
-        longSleevePants: {}
-    };
+    console.log('重置所有手動調整...');
     
-    // 保存到本地儲存
+    // 清空手動調整數據
+    for (const type in manualAdjustments) {
+        delete manualAdjustments[type];
+    }
+    
+    // 保存空的手動調整到本地儲存
     saveToLocalStorage('manualAdjustments', manualAdjustments);
     
-    // 重新載入所有調整表格
-    updateSizeTable('shortSleeveShirt');
-    updateSizeTable('shortSleevePants');
-    updateSizeTable('longSleeveShirt');
-    updateSizeTable('longSleevePants');
+    // 重新計算預留數量和可分配數量
+    if (inventoryData && demandData) {
+        calculateReservedQuantities(inventoryData, demandData, manualAdjustments);
+        
+        // 保存更新後的庫存數據
+        saveToLocalStorage('inventoryData', inventoryData);
+    }
     
-    // 更新分配比率
+    // 更新UI
     updateAllocationRatios();
     
-    // 顯示成功訊息
-    showAlert('手動調整已重置', 'info');
+    // 顯示通知
+    showAlert('手動調整已重置', 'success');
+    
+    return true;
 }
 
 /**

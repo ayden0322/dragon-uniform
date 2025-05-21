@@ -231,18 +231,10 @@ function setupSizeTabsEvents() {
  */
 export function updateAllocationRatios() {
     try {
-        // 獲取所有制服類型的比例元素
-        const ratioElements = {
-            shortSleeveShirt: document.getElementById('shortSleeveShirtRatio'),
-            shortSleevePants: document.getElementById('shortSleevePantsRatio'),
-            longSleeveShirt: document.getElementById('longSleeveShirtRatio'),
-            longSleevePants: document.getElementById('longSleevePantsRatio')
-        };
-        
         // 直接從 demandData 獲取需求數量
-        for (const type in ratioElements) {
-            if (!ratioElements[type]) continue;
-            
+        const types = ['shortSleeveShirt', 'shortSleevePants', 'longSleeveShirt', 'longSleevePants'];
+        
+        for (const type of types) {
             // 更新需求數量顯示
             let demand = 0;
             if (demandData && demandData[type] && demandData[type].totalDemand !== undefined) {
@@ -253,13 +245,6 @@ export function updateAllocationRatios() {
             if (demandElem) {
                 demandElem.textContent = demand;
             }
-            
-            // 設置固定的預留比例（10%）
-            ratioElements[type].textContent = (RESERVE_RATIO * 100).toFixed(0) + '%';
-            
-            // 固定使用綠色樣式
-            ratioElements[type].classList.remove('text-danger');
-            ratioElements[type].classList.add('text-success');
         }
         
         // 更新所有尺寸表格
