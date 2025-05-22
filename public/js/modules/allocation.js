@@ -2638,12 +2638,12 @@ function createStudentDetailWorksheet() {
         if (isDebugMode && student.shortPantsLengthDeficiency && shortPantsSize !== '-') {
             // 僅在 student.allocatedPantsSize 存在 (即有分配嘗試) 時附加
             if (student.allocatedPantsSize) {
-            shortPantsSize += '!(褲長仍不足≥2)';
+                shortPantsSize += '!(褲長仍不足≥2)';
             }
         }
         
         let longShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
-        // 如果長衣有褲長調整，添加標記 (只在Debug模式下顯示詳細原因)
+        // 如果有褲長調整，添加標記 (只在Debug模式下顯示詳細原因)
         if (student.isLongShirtSizeAdjustedForPantsLength && longShirtSize !== '-') {
             longShirtSize += '↑' + (isDebugMode ? '(褲長調整)' : '');
         }
@@ -2652,35 +2652,34 @@ function createStudentDetailWorksheet() {
             longShirtSize += '!(褲長仍不足≥2)';
         }
         
-        // 修改長褲尺寸處理邏輯
         let longPantsSize;
         if (student.allocatedLongPantsSize) {
             longPantsSize = formatSize(student.allocatedLongPantsSize); // 格式化後的基本尺寸
             const originalAllocatedLongPantsValue = student.allocatedLongPantsSize; // 原始分配值
-
+            
             // 如果原始分配值以 '*' 結尾 (補救標記)
             if (originalAllocatedLongPantsValue.endsWith('*')) {
-                // 確保 '*' 被加到格式化後的尺寸上
+                // 確保 '*' 被加到格式化後的尺寸上 (如果 formatSize 移除了它)
                 if (longPantsSize !== '-' && !longPantsSize.endsWith('*')) {
                     longPantsSize += '*';
                 }
             }
-            // 否則，如果不是補救分配，檢查是否有 longPantsAdjustmentMark
+            // 否則，如果不是補救分配，檢查是否有 longPantsAdjustmentMark (如 '↑')
             else if (student.longPantsAdjustmentMark) {
                 longPantsSize += student.longPantsAdjustmentMark;
             }
         } else {
             longPantsSize = '-';
         }
-
+        
         // 如果長褲褲長仍不足，添加標記 (只在Debug模式下顯示)
         if (isDebugMode && student.longPantsLengthDeficiency && longPantsSize !== '-') {
             // 僅在 student.allocatedLongPantsSize 存在 (即有分配嘗試) 時附加
             if (student.allocatedLongPantsSize) {
-            longPantsSize += '!(褲長仍不足≥3)';
+                longPantsSize += '!(褲長仍不足≥2)';
             }
         }
-        
+
         // 如果有分配失敗原因，根據顯示模式決定顯示內容
         if (student.allocationFailReason) {
             if (student.allocationFailReason.shortSleeveShirt && !student.allocatedShirtSize) {
@@ -2697,25 +2696,33 @@ function createStudentDetailWorksheet() {
             }
         }
 
-        // 添加學生行數據
-        data.push([
-            index + 1,
-            student.class || '',
-            String(student.number).padStart(2, '0') || '',
-            student.name || '',
-            student.gender || '',
-            student.chest || '',
-            student.waist || '',
-            student.pantsLength || '',
-            shortShirtSize,
-            student.allocatedShirtSize ? (student.shortSleeveShirtCount || 1) : '-',
-            shortPantsSize,
-            student.allocatedPantsSize ? (student.shortSleevePantsCount || 1) : '-',
-            longShirtSize,
-            student.allocatedLongShirtSize ? (student.longSleeveShirtCount || 1) : '-',
-            longPantsSize,
-            student.allocatedLongPantsSize ? (student.longSleevePantsCount || 1) : '-'
-        ]);
+        // 創建女生的紅色字體樣式
+        const femaleStyle = { font: { color: { rgb: "FF0000" } } };
+        
+        // 確定是否為女生
+        const isFemale = student.gender === '女';
+        
+        // 創建行數據，為女生添加樣式
+        const rowData = [
+            { v: index + 1, t: 'n', s: isFemale ? femaleStyle : null },
+            { v: student.class || '', t: 's', s: isFemale ? femaleStyle : null },
+            { v: student.number ? String(student.number).padStart(2, '0') : '', t: 's', s: isFemale ? femaleStyle : null },
+            { v: student.name || '', t: 's', s: isFemale ? femaleStyle : null },
+            { v: student.gender || '', t: 's', s: isFemale ? femaleStyle : null },
+            { v: student.chest || '', t: student.chest ? 'n' : 's', s: isFemale ? femaleStyle : null },
+            { v: student.waist || '', t: student.waist ? 'n' : 's', s: isFemale ? femaleStyle : null },
+            { v: student.pantsLength || '', t: student.pantsLength ? 'n' : 's', s: isFemale ? femaleStyle : null },
+            { v: shortShirtSize, t: 's' },
+            { v: student.allocatedShirtSize ? (student.shortSleeveShirtCount || 1) : '-', t: 's' },
+            { v: shortPantsSize, t: 's' },
+            { v: student.allocatedPantsSize ? (student.shortSleevePantsCount || 1) : '-', t: 's' },
+            { v: longShirtSize, t: 's' },
+            { v: student.allocatedLongShirtSize ? (student.longSleeveShirtCount || 1) : '-', t: 's' },
+            { v: longPantsSize, t: 's' },
+            { v: student.allocatedLongPantsSize ? (student.longSleevePantsCount || 1) : '-', t: 's' }
+        ];
+        
+        data.push(rowData);
     });
 
     // 創建工作表
@@ -2737,7 +2744,7 @@ function createUniformTypeWorksheet(tableId) {
     if (headerRow) {
         const headerCells = headerRow.querySelectorAll('th');
         headerCells.forEach(cell => {
-            headers.push(cell.textContent.trim());
+            headers.push({ v: cell.textContent.trim(), t: 's' });
         });
     }
 
@@ -2753,13 +2760,10 @@ function createUniformTypeWorksheet(tableId) {
                 // 獲取原始尺寸
                 const originalSize = cell.getAttribute('data-original-size');
                 // 如果有原始尺寸，使用formatSize函數格式化
-                if (originalSize) {
-                    rowData.push(formatSize(originalSize));
-                } else {
-                    rowData.push(cell.textContent.trim());
-                }
+                const cellValue = originalSize ? formatSize(originalSize) : cell.textContent.trim();
+                rowData.push({ v: cellValue, t: 's' });
             } else {
-                rowData.push(cell.textContent.trim());
+                rowData.push({ v: cell.textContent.trim(), t: 's' });
             }
         });
         data.push(rowData);
