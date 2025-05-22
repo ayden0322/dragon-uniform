@@ -1971,11 +1971,6 @@ function updateStudentDetailedResults() {
         const longShirtFailReason = student.allocationFailReason?.longSleeveShirt || '';
         const longPantsFailReason = student.allocationFailReason?.longSleevePants || '';
         
-        const formattedShirtSize = student.allocatedShirtSize ? formatSize(student.allocatedShirtSize) : '-';
-        const formattedPantsSize = student.allocatedPantsSize ? formatSize(student.allocatedPantsSize) : '-';
-        const formattedLongShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
-        const formattedLongPantsSize = student.allocatedLongPantsSize ? formatSize(student.allocatedLongPantsSize) : '-';
-        
         // 獲取新的分配標記
         let shirtMark = student.shirtAllocationMark || '';
         const longShirtMark = student.longShirtAllocationMark || '';
@@ -1991,24 +1986,39 @@ function updateStudentDetailedResults() {
             shirtMark = '↑';
         }
         
+        // 先處理尺碼中的星號問題
         // Determine display marks for pants, prioritizing '*' if present in allocated string
         let displayShortPantsMark = '';
+        let cleanShortPantsSize = student.allocatedPantsSize;
         if (student.allocatedPantsSize) {
             if (student.allocatedPantsSize.endsWith('*')) {
                 displayShortPantsMark = '*';
+                // 移除原始尺碼中的星號，以避免重複顯示
+                cleanShortPantsSize = student.allocatedPantsSize.slice(0, -1);
             } else if (student.pantsAdjustmentMark) {
                 displayShortPantsMark = student.pantsAdjustmentMark;
             }
         }
 
         let displayLongPantsMark = '';
+        let cleanLongPantsSize = student.allocatedLongPantsSize;
         if (student.allocatedLongPantsSize) {
             if (student.allocatedLongPantsSize.endsWith('*')) {
                 displayLongPantsMark = '*';
+                // 移除原始尺碼中的星號，以避免重複顯示
+                cleanLongPantsSize = student.allocatedLongPantsSize.slice(0, -1);
             } else if (student.longPantsAdjustmentMark) {
                 displayLongPantsMark = student.longPantsAdjustmentMark;
             }
         }
+        
+        // 在取得清理後的尺碼後，再進行格式化
+        const formattedShirtSize = student.allocatedShirtSize ? formatSize(student.allocatedShirtSize) : '-';
+        // 使用已清除星號的短褲尺碼來格式化
+        const formattedPantsSize = student.allocatedPantsSize ? formatSize(cleanShortPantsSize) : '-';
+        const formattedLongShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
+        // 使用已清除星號的長褲尺碼來格式化
+        const formattedLongPantsSize = student.allocatedLongPantsSize ? formatSize(cleanLongPantsSize) : '-';
         
         const isDebugMode = currentSizeDisplayMode === SIZE_DISPLAY_MODES.debug;
         const simplifiedFailureMessage = '分配失敗';
