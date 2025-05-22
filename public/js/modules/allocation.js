@@ -3063,26 +3063,30 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
             if (student.pantsLength - targetSizeLength >= 2) {
                 console.log(`學生 ${student.name} 褲長(${student.pantsLength})比分配尺碼長度(${targetSizeLength})大於等於2，嘗試提升尺碼`);
                 
-                // 尋找大一號尺碼
-                const nextSizeIndex = targetSizeIndex + 1;
-                if (nextSizeIndex < availableSizes.length) {
-                    const nextSize = availableSizes[nextSizeIndex].size;
+                // 從SIZES數組中獲取當前尺碼的索引位置
+                const currentSizeIndex = SIZES.indexOf(targetSize);
+                
+                // 確保是有效的索引，並且不是最後一個尺碼
+                if (currentSizeIndex !== -1 && currentSizeIndex < SIZES.length - 1) {
+                    // 獲取下一個尺碼
+                    const nextSize = SIZES[currentSizeIndex + 1];
+                    const nextSizeLength = getLengthValueFromSize(nextSize);
                     
                     // 檢查大一號尺碼庫存
                     if (pantsInventoryData[nextSize]?.allocatable >= requiredCount) {
                         finalSize = nextSize;
                         adjustmentMark = '↑';
-                        console.log(`成功提升尺碼至 ${nextSize}↑`);
+                        console.log(`成功提升尺碼: ${targetSize}(${targetSizeLength}) -> ${finalSize}(${nextSizeLength})${adjustmentMark}`);
                         stats.pantsSizeAdjusted++;
                     } else {
                         // 大一號尺碼庫存不足，回退到原尺碼並標記
-                        console.log(`大一號尺碼 ${nextSize} 庫存不足，回退到原尺碼 ${targetSize} 並標記 *`);
+                        console.log(`大一號尺碼 ${nextSize}(${nextSizeLength}) 庫存不足，回退到原尺碼 ${targetSize}(${targetSizeLength}) 並標記 *`);
                         fallbackMark = '*';
                         stats.fallbackUsed++;
                     }
                 } else {
                     // 沒有更大的尺碼可用
-                    console.log(`沒有更大的尺碼可用，維持原尺碼 ${targetSize} 並標記 *`);
+                    console.log(`沒有更大的尺碼可用，維持原尺碼 ${targetSize}(${targetSizeLength}) 並標記 *`);
                     fallbackMark = '*';
                     stats.fallbackUsed++;
                 }
@@ -3098,7 +3102,10 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
                 }
                 
                 stats.allocated++;
-                console.log(`%c${UNIFORM_TYPES[inventoryType]} 分配成功：${student.name} => ${student[allocatedField]}${student[adjustmentMarkField] || ''} (需求 ${requiredCount}件)`, 'color: #27ae60; font-weight: bold;');
+                // 更新日誌格式，確保顯示正確的分配結果
+                const displaySize = student[allocatedField];
+                const displayMark = student[adjustmentMarkField] || '';
+                console.log(`%c${UNIFORM_TYPES[inventoryType]} 分配成功：${student.name} => ${displaySize}${displayMark} (需求 ${requiredCount}件)`, 'color: #27ae60; font-weight: bold;');
             } else {
                 // 扣減庫存失敗
                 student.allocationFailReason = student.allocationFailReason || {};
