@@ -231,7 +231,7 @@ export function calculateReservedQuantities(inventoryData, demandData, manualAdj
             itemTotalDemand = demandData[type].totalDemand;
         }
         
-        // 計算可用於預留的基數（對短褲和長褲）
+        // 計算可用於預留的基數（總庫存-總需求，至少為0）
         const reservationBase = Math.max(0, itemTotalInventory - itemTotalDemand);
         
         // 檢查是否需要顯示警告（學生需求數大於庫存總數）
@@ -262,18 +262,19 @@ export function calculateReservedQuantities(inventoryData, demandData, manualAdj
                     reserved = Math.ceil(totalInventory * ratio);
                     console.log(`尺寸 ${size}: 使用固定比例計算預留數 - 總庫存=${totalInventory}, 預留比例=${ratio}, 預留數=${reserved}`);
                 } else {
-                    // 短褲和長褲：基於(總庫存-學生需求)的差額乘以該尺寸的預留比例
+                    // 短褲和長褲：基於(總庫存-學生需求)的總差額乘以該尺寸的預留比例
                     const ratio = ratioConfig.ratios[size] || 0;
                     if (!showAlertForShortage) {
+                        // 使用用戶期望的計算方式：總剩餘庫存 * 該尺寸預留比例，無條件進位
                         reserved = Math.ceil(reservationBase * ratio);
                     } else {
                         // 如果學生需求大於總庫存，則預留數量為0
                         reserved = 0;
                     }
-                    console.log(`尺寸 ${size}: 使用尺寸預留比例計算預留數 - 差額基數=${reservationBase}, 預留比例=${ratio}, 預留數=${reserved}`);
+                    console.log(`尺寸 ${size}: 使用尺寸預留比例計算預留數 - 總剩餘庫存=${reservationBase}, 預留比例=${ratio}, 預留數=${reserved}`);
                 }
                 
-                // 計算可分配數量
+                // 計算可分配數量 = 該尺寸總庫存 - 預留數量
                 allocatable = totalInventory - reserved;
             }
             
@@ -398,8 +399,9 @@ export function updateSizeTable(type) {
             // 短衣和長衣：直接使用尺寸的總庫存乘以固定比例
             reservedQuantity = Math.ceil(total * actualRatio);
         } else {
-            // 短褲和長褲：基於(總庫存-學生需求)的差額乘以該尺寸的預留比例
+            // 短褲和長褲：基於(總庫存-學生需求)的總差額乘以該尺寸的預留比例
             if (!showAlertForShortage) {
+                // 使用用戶期望的計算方式：總剩餘庫存 * 該尺寸預留比例，無條件進位
                 reservedQuantity = Math.ceil(reservationBase * actualRatio);
             } else {
                 // 如果學生需求大於總庫存，則預留數量為0（紅色的0）
@@ -407,7 +409,7 @@ export function updateSizeTable(type) {
             }
         }
         
-        // 計算可分配數量
+        // 計算可分配數量 = 該尺寸總庫存 - 預留數量
         const calculatedAllocatable = total - reservedQuantity;
         
         // 檢查是否有手動調整，如果沒有則使用計算的可分配數
