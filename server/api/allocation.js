@@ -68,25 +68,20 @@ const validationService = {
   },
   
   /**
-   * 驗證庫存數據
-   * @param {Inventory} inventory - 庫存數據
+   * 驗證分配結果數據
+   * @param {object} results - 分配結果數據
    * @returns {boolean|string} - 成功返回true，失敗返回錯誤訊息
    */
-  validateInventory: (inventory) => {
-    if (!inventory) return '庫存數據為空';
+  validateAllocationResults: (results) => {
+    if (!results || typeof results !== 'object') {
+      return '分配結果數據無效';
+    }
     
-    const inventoryTypes = ['shirts', 'pants', 'longPants'];
-    for (const type of inventoryTypes) {
-      if (!Array.isArray(inventory[type])) {
-        return `${type} 庫存數據無效`;
-      }
-      
-      // 檢查每個庫存項目
-      for (const item of inventory[type]) {
-        if (!item.id || !item.size || typeof item.quantity !== 'number') {
-          return `${type} 庫存項目數據不完整: ${JSON.stringify(item)}`;
-        }
-      }
+    // 檢查是否有必要的結果類型（前端可能傳入不同格式的結果）
+    const hasResults = Object.keys(results).length > 0;
+    
+    if (!hasResults) {
+      return '分配結果不能為空';
     }
     
     return true;
@@ -112,9 +107,9 @@ const validationService = {
       return { isValid: false, error: studentsValidation };
     }
     
-    const inventoryValidation = validationService.validateInventory(inventoryData);
-    if (inventoryValidation !== true) {
-      return { isValid: false, error: inventoryValidation };
+    const resultsValidation = validationService.validateAllocationResults(results);
+    if (resultsValidation !== true) {
+      return { isValid: false, error: resultsValidation };
     }
     
     return { isValid: true, error: null };
@@ -269,202 +264,6 @@ const storageService = {
 };
 
 /**
- * 制服分配算法相關功能
- */
-const allocationService = {
-  /**
-   * 統一分配處理入口
-   * @param {Student[]} students - 學生資料列表
-   * @param {Inventory} inventory - 庫存資料
-   * @returns {object} - 所有分配結果
-   */
-  allocateAll: (students, inventory) => {
-    return {
-      shirts: allocationService.allocateShirts(students, inventory),
-      pants: allocationService.allocatePants(students, inventory),
-      longPants: allocationService.allocateLongPants(students, inventory)
-    };
-  },
-  
-  /**
-   * 分配短袖上衣
-   * @param {Student[]} students - 學生資料列表
-   * @param {Inventory} inventory - 庫存資料
-   * @returns {AllocationResult[]} - 分配結果
-   */
-  allocateShirts: (students, inventory) => {
-    // 複製庫存進行操作，避免修改原始數據
-    const availableItems = allocationService._copyInventoryItems(inventory.shirts);
-    const sortedStudents = allocationService._sortStudentsForShirts(students);
-    
-    // 考慮需求件數的分配
-    return allocationService._allocateItemsWithQuantity(
-      sortedStudents, 
-      availableItems, 
-      'shirt', 
-      student => student.shirtSize
-    );
-  },
-  
-  /**
-   * 複製庫存數據，避免修改原始數據
-   * @param {InventoryItem[]} items - 庫存項目
-   * @returns {InventoryItem[]} - 複製的庫存項目
-   * @private
-   */
-  _copyInventoryItems: (items) => {
-    return items.map(item => ({ ...item }));
-  },
-  
-  /**
-   * 按照上衣分配規則對學生進行排序
-   * @param {Student[]} students - 學生資料列表
-   * @returns {Student[]} - 排序後的學生列表
-   * @private
-   */
-  _sortStudentsForShirts: (students) => {
-    return students.map(student => {
-      // 計算有效胸圍（取胸圍和腰圍的最大值）
-      const effectiveChest = Math.max(student.chest, student.waist);
-      return { ...student, effectiveChest };
-    }).sort((a, b) => {
-      // 主要排序依據：有效胸圍
-      if (a.effectiveChest !== b.effectiveChest) {
-        return a.effectiveChest - b.effectiveChest;
-      }
-      // 次要排序依據：褲長較短的優先
-      return a.pantsLength - b.pantsLength;
-    });
-  },
-  
-  /**
-   * 分配短褲
-   * @param {Student[]} students - 學生資料列表
-   * @param {Inventory} inventory - 庫存資料
-   * @returns {AllocationResult[]} - 分配結果
-   */
-  allocatePants: (students, inventory) => {
-    const availableItems = allocationService._copyInventoryItems(inventory.pants);
-    const sortedStudents = allocationService._sortStudentsForPants(students);
-    
-    return allocationService._allocateItemsWithQuantity(
-      sortedStudents, 
-      availableItems, 
-      'pants', 
-      student => student.pantsSize
-    );
-  },
-  
-  /**
-   * 按照短褲分配規則對學生進行排序
-   * @param {Student[]} students - 學生資料列表
-   * @returns {Student[]} - 排序後的學生列表
-   * @private
-   */
-  _sortStudentsForPants: (students) => {
-    return students.map(student => {
-      return { ...student, effectiveWaist: student.waist };
-    }).sort((a, b) => {
-      // 只根據腰圍從小到大排序學生
-      return a.effectiveWaist - b.effectiveWaist;
-    });
-  },
-  
-  /**
-   * 分配長褲
-   * @param {Student[]} students - 學生資料列表
-   * @param {Inventory} inventory - 庫存資料
-   * @returns {AllocationResult[]} - 分配結果
-   */
-  allocateLongPants: (students, inventory) => {
-    const availableItems = allocationService._copyInventoryItems(inventory.longPants);
-    const sortedStudents = allocationService._sortStudentsForLongPants(students);
-    
-    return allocationService._allocateItemsWithQuantity(
-      sortedStudents, 
-      availableItems, 
-      'longPants', 
-      student => student.longPantsSize
-    );
-  },
-  
-  /**
-   * 按照長褲分配規則對學生進行排序
-   * @param {Student[]} students - 學生資料列表
-   * @returns {Student[]} - 排序後的學生列表
-   * @private
-   */
-  _sortStudentsForLongPants: (students) => {
-    return students.map(student => {
-      return { ...student, effectiveWaist: student.waist };
-    }).sort((a, b) => {
-      // 主要排序依據：腰圍
-      if (a.effectiveWaist !== b.effectiveWaist) {
-        return a.effectiveWaist - b.effectiveWaist;
-      }
-      // 次要排序依據：褲長較短的優先
-      return a.pantsLength - b.pantsLength;
-    });
-  },
-  
-  /**
-   * 考慮需求件數的物品分配邏輯
-   * @param {Student[]} sortedStudents - 已排序的學生列表
-   * @param {InventoryItem[]} availableItems - 可用的庫存項目
-   * @param {string} type - 物品類型 (shirt/pants/longPants)
-   * @param {Function} getSizeFunc - 獲取學生尺寸的函數
-   * @returns {AllocationResult[]} - 分配結果
-   * @private
-   */
-  _allocateItemsWithQuantity: (sortedStudents, availableItems, type, getSizeFunc) => {
-    const sizeKey = type + 'Size';
-    const idKey = type + 'Id';
-    const results = [];
-    
-    // 為每個學生分配物品
-    for (const student of sortedStudents) {
-      const size = getSizeFunc(student);
-      const requiredQuantity = student.requiredQuantity || 1; // 默認需求1件
-      
-      // 查找匹配尺寸的庫存
-      const itemIndex = availableItems.findIndex(item => item.size === size);
-      
-      if (itemIndex === -1 || availableItems[itemIndex].quantity === 0) {
-        // 如果沒有找到匹配的庫存或庫存已用完
-        results.push({
-          studentId: student.id,
-          [sizeKey]: size,
-          allocated: false,
-          [idKey]: null,
-          requiredQuantity,
-          allocatedQuantity: 0
-        });
-        continue;
-      }
-      
-      // 計算可以分配的數量
-      const item = availableItems[itemIndex];
-      const allocatedQuantity = Math.min(requiredQuantity, item.quantity);
-      
-      // 更新庫存
-      item.quantity -= allocatedQuantity;
-      
-      // 記錄分配結果
-      results.push({
-        studentId: student.id,
-        [sizeKey]: size,
-        allocated: allocatedQuantity > 0,
-        [idKey]: item.id,
-        requiredQuantity,
-        allocatedQuantity
-      });
-    }
-    
-    return results;
-  }
-};
-
-/**
  * 錯誤處理服務
  */
 const errorService = {
@@ -486,7 +285,7 @@ const errorService = {
 
 // API 端點處理函數
 /**
- * 保存分配結果
+ * 保存分配結果（前端計算完成後調用）
  * @param {object} req - HTTP請求對象
  * @param {object} res - HTTP回應對象
  */
@@ -579,39 +378,7 @@ exports.getAllocationDetail = (req, res) => {
   }
 };
 
-/**
- * 執行分配計算
- * @param {object} req - HTTP請求對象
- * @param {object} res - HTTP回應對象
- */
-exports.calculateAllocation = (req, res) => {
-  try {
-    const { students, inventory } = req.body;
-    
-    // 驗證輸入數據
-    const studentsValidation = validationService.validateStudents(students);
-    if (studentsValidation !== true) {
-      return res.status(400).json({ error: studentsValidation });
-    }
-    
-    const inventoryValidation = validationService.validateInventory(inventory);
-    if (inventoryValidation !== true) {
-      return res.status(400).json({ error: inventoryValidation });
-    }
-    
-    // 執行分配
-    const results = allocationService.allocateAll(students, inventory);
-    res.json({
-      success: true,
-      results
-    });
-  } catch (err) {
-    const errorResponse = errorService.handleApiError(err, '計算分配結果');
-    res.status(500).json(errorResponse);
-  }
-};
-
 // 導出服務，供其他模組使用
-exports.allocationService = allocationService;
 exports.storageService = storageService;
 exports.validationService = validationService;
+exports.errorService = errorService;
