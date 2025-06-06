@@ -3324,7 +3324,7 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
                     // 交換邏輯：
                     // 1. 男生原本使用 exchangeTargetSize，現在要改用 finalSize
                     // 2. 女生原本要用 finalSize，現在要改用 exchangeTargetSize
-                    // 3. 因為男生已經佔用了 exchangeTargetSize，所以實際上庫存不需要變動
+                    // 3. 關鍵：女生接手男生原本的配額，所以exchangeTargetSize的庫存分配數量不變
                     // 4. 只需要檢查 finalSize 是否有庫存給男生使用
                     
                     // 檢查女生原本要的尺碼是否有庫存給男生
@@ -3338,11 +3338,11 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
                         console.log(`  🔄 為男生 ${maleStudent.name} 在尺寸 ${finalSize} 扣減 ${requiredCount} 件庫存`);
                         const maleDecreaseSuccess = decreaseInventory(workingInventory, finalSize, requiredCount, inventoryType);
                         
-                        // 釋放男生原本的尺碼（因為要給女生用）
-                        console.log(`  🔄 釋放男生 ${maleStudent.name} 原本佔用的尺寸 ${exchangeTargetSize} 共 ${requiredCount} 件庫存`);
-                        workingInventory[exchangeTargetSize].allocatable += requiredCount;
-                        workingInventory[exchangeTargetSize].allocated -= requiredCount;
-                        console.log(`%c  ✅ 釋放庫存完成 [${exchangeTargetSize}]: 可分配=${workingInventory[exchangeTargetSize].allocatable}件, 已分配=${workingInventory[exchangeTargetSize].allocated}件`, 'color: #27ae60;');
+                        // ✅ 修正：女生接手男生原本的配額，不釋放exchangeTargetSize庫存
+                        // 因為：女生佔用的是男生原本已分配的配額，總的已分配數量不變
+                        console.log(`  🔄 女生 ${student.name} 接手男生 ${maleStudent.name} 原本的 ${exchangeTargetSize} 配額`);
+                        console.log(`  📝 重要：${exchangeTargetSize} 庫存分配數量保持不變，因為只是配額轉移`);
+                        console.log(`%c  ✅ 配額轉移完成 [${exchangeTargetSize}]: 可分配=${workingInventory[exchangeTargetSize].allocatable}件, 已分配=${workingInventory[exchangeTargetSize].allocated}件 (維持不變)`, 'color: #27ae60;');
                         
                         if (maleDecreaseSuccess) {
                             // 執行交換
