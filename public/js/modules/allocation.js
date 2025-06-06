@@ -1,6 +1,6 @@
 // 分配相關功能模組
 import { saveToLocalStorage, loadFromLocalStorage, showAlert, downloadExcel } from './utils.js';
-import { SIZES, UNIFORM_TYPES, formatSize, currentSizeDisplayMode, SIZE_DISPLAY_MODES, getFemaleChestAdjustment, getCurrentSchoolConfig } from './config.js';
+import { SIZES, UNIFORM_TYPES, formatSize, formatSizeByMode, currentSizeDisplayMode, SIZE_DISPLAY_MODES, ALLOCATION_DISPLAY_MODES, setAllocationDisplayMode, initAllocationDisplayModes, getFemaleChestAdjustment, getCurrentSchoolConfig } from './config.js';
 import { inventoryData, calculateTotalInventory, updateInventoryUI, manualAdjustments, initInventoryFeatures, saveManualAdjustments, saveManualAdjustmentsSilent, calculateReservedQuantities } from './inventory.js';
 import { studentData, sortedStudentData, demandData, updateStudentAllocationUI, updateAdjustmentPage, canParticipateInAllocation, needsUniform } from './students.js';
 import { updateAllocationRatios, formatSizeWithAdjustment } from './ui.js';
@@ -1896,6 +1896,21 @@ export function updateAllocationResults() {
 }
 
 /**
+ * 取得制服類型的中文名稱
+ * @param {string} uniformType - 制服類型
+ * @returns {string} 中文名稱
+ */
+function getUniformTypeName(uniformType) {
+    const typeNames = {
+        shortSleeveShirt: '短衣',
+        shortSleevePants: '短褲',
+        longSleeveShirt: '長衣',
+        longSleevePants: '長褲'
+    };
+    return typeNames[uniformType] || uniformType;
+}
+
+/**
  * 更新學生詳細分配結果
  */
 function updateStudentDetailedResults() {
@@ -1934,12 +1949,54 @@ function updateStudentDetailedResults() {
                     color: #007bff; /* 藍色用於標記 */
                 }
             </style>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h4>學生分配詳細結果</h4>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">學生分配詳細結果</h4>
                 <button id="exportAllocationResultsBtn" class="btn btn-success">
                     <i class="bi bi-file-excel me-1"></i>匯出Excel
                 </button>
             </div>
+            
+            <!-- 顯示模式控制面板 -->
+            <div class="card-body pt-2 pb-2" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                <div class="row align-items-center justify-content-end">
+                    <div class="col-auto">
+                        <small class="text-muted">📋 顯示設定：</small>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-0 me-1 small">短衣：</label>
+                        <select id="shortSleeveShirtDisplayMode" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                            <option value="both">尺寸及尺碼</option>
+                            <option value="size">僅尺寸</option>
+                            <option value="number">僅尺碼</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-0 me-1 small">短褲：</label>
+                        <select id="shortSleevePantsDisplayMode" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                            <option value="both">尺寸及尺碼</option>
+                            <option value="size">僅尺寸</option>
+                            <option value="number">僅尺碼</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-0 me-1 small">長衣：</label>
+                        <select id="longSleeveShirtDisplayMode" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                            <option value="both">尺寸及尺碼</option>
+                            <option value="size">僅尺寸</option>
+                            <option value="number">僅尺碼</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-0 me-1 small">長褲：</label>
+                        <select id="longSleevePantsDisplayMode" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                            <option value="both">尺寸及尺碼</option>
+                            <option value="size">僅尺寸</option>
+                            <option value="number">僅尺碼</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
             <div class="table-responsive">
                 <table id="studentDetailTable" class="table table-striped table-bordered">
                     <thead>
@@ -1980,6 +2037,35 @@ function updateStudentDetailedResults() {
         if (exportBtn) {
             exportBtn.addEventListener('click', exportAllocationResultsToExcel);
         }
+        
+        // 初始化顯示模式設定
+        initAllocationDisplayModes();
+        
+        // 設定顯示模式選擇器的初始值和事件監聽
+        const displayModeSelectors = [
+            { id: 'shortSleeveShirtDisplayMode', uniformType: 'shortSleeveShirt' },
+            { id: 'shortSleevePantsDisplayMode', uniformType: 'shortSleevePants' },
+            { id: 'longSleeveShirtDisplayMode', uniformType: 'longSleeveShirt' },
+            { id: 'longSleevePantsDisplayMode', uniformType: 'longSleevePants' }
+        ];
+        
+        displayModeSelectors.forEach(({ id, uniformType }) => {
+            const selector = document.getElementById(id);
+            if (selector) {
+                // 設定初始值
+                selector.value = ALLOCATION_DISPLAY_MODES[uniformType];
+                
+                // 添加變更事件監聽
+                selector.addEventListener('change', (event) => {
+                    const newMode = event.target.value;
+                    if (setAllocationDisplayMode(uniformType, newMode)) {
+                        // 重新渲染表格
+                        updateStudentDetailedResults();
+                        showAlert(`${getUniformTypeName(uniformType)}顯示模式已更新`, 'success');
+                    }
+                });
+            }
+        });
     }
 
     const tbody = detailTable.querySelector('tbody');
@@ -2066,13 +2152,13 @@ function updateStudentDetailedResults() {
             }
         }
         
-        // 在取得清理後的尺碼後，再進行格式化
-        const formattedShirtSize = student.allocatedShirtSize ? formatSize(student.allocatedShirtSize) : '-';
+        // 在取得清理後的尺碼後，使用個別的顯示模式格式化
+        const formattedShirtSize = student.allocatedShirtSize ? formatSizeByMode(student.allocatedShirtSize, ALLOCATION_DISPLAY_MODES.shortSleeveShirt) : '-';
         // 使用已清除星號的短褲尺碼來格式化
-        const formattedPantsSize = student.allocatedPantsSize ? formatSize(cleanShortPantsSize) : '-';
-        const formattedLongShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
+        const formattedPantsSize = student.allocatedPantsSize ? formatSizeByMode(cleanShortPantsSize, ALLOCATION_DISPLAY_MODES.shortSleevePants) : '-';
+        const formattedLongShirtSize = student.allocatedLongShirtSize ? formatSizeByMode(student.allocatedLongShirtSize, ALLOCATION_DISPLAY_MODES.longSleeveShirt) : '-';
         // 使用已清除星號的長褲尺碼來格式化
-        const formattedLongPantsSize = student.allocatedLongPantsSize ? formatSize(cleanLongPantsSize) : '-';
+        const formattedLongPantsSize = student.allocatedLongPantsSize ? formatSizeByMode(cleanLongPantsSize, ALLOCATION_DISPLAY_MODES.longSleevePants) : '-';
         
         const isDebugMode = currentSizeDisplayMode === SIZE_DISPLAY_MODES.debug;
         const simplifiedFailureMessage = '分配失敗';
@@ -2594,23 +2680,17 @@ function exportAllocationResultsToExcel() {
         const now = new Date();
         const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
         
-        // 將尺寸顯示模式加入檔名
-        let displayModeText = '';
-        switch (currentSizeDisplayMode) {
-            case SIZE_DISPLAY_MODES.size:
-                displayModeText = '尺寸';
-                break;
-            case SIZE_DISPLAY_MODES.number:
-                displayModeText = '尺碼';
-                break;
-            case SIZE_DISPLAY_MODES.debug:
-                displayModeText = 'Debug';
-                break;
-            case SIZE_DISPLAY_MODES.both:
-            default:
-                displayModeText = '完整';
-                break;
-        }
+        // 將個別顯示模式設定加入檔名
+        const getDisplayText = (mode) => {
+            switch (mode) {
+                case SIZE_DISPLAY_MODES.size: return '尺寸';
+                case SIZE_DISPLAY_MODES.number: return '尺碼';
+                case SIZE_DISPLAY_MODES.both: return '尺寸及尺碼';
+                default: return '尺寸及尺碼';
+            }
+        };
+        
+        const displayModeText = `短衣${getDisplayText(ALLOCATION_DISPLAY_MODES.shortSleeveShirt)}_短褲${getDisplayText(ALLOCATION_DISPLAY_MODES.shortSleevePants)}_長衣${getDisplayText(ALLOCATION_DISPLAY_MODES.longSleeveShirt)}_長褲${getDisplayText(ALLOCATION_DISPLAY_MODES.longSleevePants)}`;
         
         const filename = `制服分配結果_${displayModeText}_${timestamp}.xlsx`;
 
@@ -2656,8 +2736,8 @@ function createStudentDetailWorksheet() {
 
     // 添加學生數據
     sortedStudents.forEach((student, index) => {
-        // 處理各種制服的分配情況 - 使用formatSize函數格式化尺寸
-        let shortShirtSize = student.allocatedShirtSize ? formatSize(student.allocatedShirtSize) : '-';
+        // 處理各種制服的分配情況 - 使用個別的顯示模式格式化尺寸
+        let shortShirtSize = student.allocatedShirtSize ? formatSizeByMode(student.allocatedShirtSize, ALLOCATION_DISPLAY_MODES.shortSleeveShirt) : '-';
         // 如果有褲長調整，添加標記 (只在Debug模式下顯示詳細原因)
         if (student.isShirtSizeAdjustedForPantsLength && shortShirtSize !== '-') {
             shortShirtSize += '↑' + (isDebugMode ? '(褲長調整)' : '');
@@ -2670,7 +2750,7 @@ function createStudentDetailWorksheet() {
         // 修改短褲尺寸處理邏輯
         let shortPantsSize;
         if (student.allocatedPantsSize) {
-            shortPantsSize = formatSize(student.allocatedPantsSize); // 格式化後的基本尺寸, e.g., "34"
+            shortPantsSize = formatSizeByMode(student.allocatedPantsSize, ALLOCATION_DISPLAY_MODES.shortSleevePants); // 格式化後的基本尺寸, e.g., "34"
             const originalAllocatedPantsValue = student.allocatedPantsSize; // 原始分配值, e.g., "XS/34*"
 
             // 如果原始分配值以 '*' 結尾 (補救標記)
@@ -2696,7 +2776,7 @@ function createStudentDetailWorksheet() {
             }
         }
         
-        let longShirtSize = student.allocatedLongShirtSize ? formatSize(student.allocatedLongShirtSize) : '-';
+        let longShirtSize = student.allocatedLongShirtSize ? formatSizeByMode(student.allocatedLongShirtSize, ALLOCATION_DISPLAY_MODES.longSleeveShirt) : '-';
         // 如果有褲長調整，添加標記 (只在Debug模式下顯示詳細原因)
         if (student.isLongShirtSizeAdjustedForPantsLength && longShirtSize !== '-') {
             longShirtSize += '↑' + (isDebugMode ? '(褲長調整)' : '');
@@ -2708,7 +2788,7 @@ function createStudentDetailWorksheet() {
         
         let longPantsSize;
         if (student.allocatedLongPantsSize) {
-            longPantsSize = formatSize(student.allocatedLongPantsSize); // 格式化後的基本尺寸
+            longPantsSize = formatSizeByMode(student.allocatedLongPantsSize, ALLOCATION_DISPLAY_MODES.longSleevePants); // 格式化後的基本尺寸
             const originalAllocatedLongPantsValue = student.allocatedLongPantsSize; // 原始分配值
             
             // 如果原始分配值以 '*' 結尾 (補救標記)

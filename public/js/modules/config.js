@@ -12,6 +12,22 @@ export const SIZE_DISPLAY_MODES = {
 // 默認尺寸顯示模式
 export let currentSizeDisplayMode = SIZE_DISPLAY_MODES.both;
 
+// 初始化尺寸顯示模式（從localStorage載入）
+export function initSizeDisplayMode() {
+    const savedMode = localStorage.getItem('sizeDisplayMode');
+    if (savedMode && Object.values(SIZE_DISPLAY_MODES).includes(savedMode)) {
+        currentSizeDisplayMode = savedMode;
+    }
+}
+
+// 分配結果頁面的個別顯示模式配置
+export const ALLOCATION_DISPLAY_MODES = {
+    shortSleeveShirt: SIZE_DISPLAY_MODES.both,
+    shortSleevePants: SIZE_DISPLAY_MODES.both,
+    longSleeveShirt: SIZE_DISPLAY_MODES.both,
+    longSleevePants: SIZE_DISPLAY_MODES.both
+};
+
 // 設置尺寸顯示模式
 export function setSizeDisplayMode(mode) {
     if (Object.values(SIZE_DISPLAY_MODES).includes(mode)) {
@@ -23,17 +39,38 @@ export function setSizeDisplayMode(mode) {
     return false;
 }
 
-// 根據當前顯示模式格式化尺寸
-export function formatSize(sizeString) {
+// 設置特定制服類型的顯示模式
+export function setAllocationDisplayMode(uniformType, mode) {
+    if (Object.keys(ALLOCATION_DISPLAY_MODES).includes(uniformType) && 
+        Object.values(SIZE_DISPLAY_MODES).includes(mode)) {
+        ALLOCATION_DISPLAY_MODES[uniformType] = mode;
+        // 保存到localStorage
+        localStorage.setItem(`allocationDisplayMode_${uniformType}`, mode);
+        return true;
+    }
+    return false;
+}
+
+// 初始化分配顯示模式（從localStorage載入）
+export function initAllocationDisplayModes() {
+    Object.keys(ALLOCATION_DISPLAY_MODES).forEach(uniformType => {
+        const savedMode = localStorage.getItem(`allocationDisplayMode_${uniformType}`);
+        if (savedMode && Object.values(SIZE_DISPLAY_MODES).includes(savedMode)) {
+            ALLOCATION_DISPLAY_MODES[uniformType] = savedMode;
+        }
+    });
+}
+
+// 根據指定的顯示模式格式化尺寸
+export function formatSizeByMode(sizeString, mode) {
     if (!sizeString) return '';
     
     // 檢查尺寸格式，假設格式為 "XS/34"
     const parts = sizeString.split('/');
-    if (parts.length !== 2) return sizeString; // 如果不是預期的格式，直接返回原始字串
     
     const [size, number] = parts;
     
-    switch (currentSizeDisplayMode) {
+    switch (mode) {
         case SIZE_DISPLAY_MODES.size:
             return size;
         case SIZE_DISPLAY_MODES.number:
@@ -42,6 +79,11 @@ export function formatSize(sizeString) {
         default:
             return sizeString;
     }
+}
+
+// 根據當前顯示模式格式化尺寸
+export function formatSize(sizeString) {
+    return formatSizeByMode(sizeString, currentSizeDisplayMode);
 }
 
 // 制服類型常數

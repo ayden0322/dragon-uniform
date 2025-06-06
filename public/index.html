@@ -17,18 +17,8 @@
 </head>
 <body>
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="mb-0 text-center flex-grow-1">學生制服自動分配系統</h1>
-            <div class="header-actions">
-                <div class="form-group">
-                    <select id="sizeDisplayMode" class="form-select form-select-sm">
-                        <option value="both" selected>尺寸/尺碼 (XS/34)</option>
-                        <option value="size">僅尺寸 (XS)</option>
-                        <option value="number">僅尺碼 (34)</option>
-                        <option value="debug">Debug模式</option>
-                    </select>
-                </div>
-            </div>
+        <div class="d-flex justify-content-center align-items-center mb-4">
+            <h1 class="mb-0">學生制服自動分配系統</h1>
         </div>
         
         <!-- 警告訊息容器 -->
@@ -99,10 +89,20 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between">
                         <h5>庫存資料</h5>
-                        <div>
-                            <button id="importInventoryBtn" class="btn btn-primary me-2">匯入Excel/CSV</button>
-                            <button id="downloadInventoryTemplateBtn" class="btn btn-outline-secondary me-2">下載範本</button>
-                            <button id="clearInventoryDataBtn" class="btn btn-danger">清除資料</button>
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <label class="form-label mb-0 me-2">尺寸顯示：</label>
+                                <select id="sizeDisplayMode" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                                    <option value="both" selected>尺寸/尺碼 (XS/34)</option>
+                                    <option value="size">僅尺寸 (XS)</option>
+                                    <option value="number">僅尺碼 (34)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button id="importInventoryBtn" class="btn btn-primary me-2">匯入Excel/CSV</button>
+                                <button id="downloadInventoryTemplateBtn" class="btn btn-outline-secondary me-2">下載範本</button>
+                                <button id="clearInventoryDataBtn" class="btn btn-danger">清除資料</button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
