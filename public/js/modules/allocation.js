@@ -549,21 +549,31 @@ function decreaseInventory(inventory, size, count, inventoryType) {
         
         // 檢查庫存是否足夠 - 避免減少超過可用數量
         if (allocatable < count) {
-            console.error(`無法減少庫存: 尺寸 ${size} 需要 ${count} 件，但只剩 ${allocatable} 件可分配`);
+            console.error(`%c庫存扣減失敗: 尺寸 ${size} 需要 ${count} 件，但只剩 ${allocatable} 件可分配`, 'color: red; font-weight: bold;');
             return false;
         }
         
         const actualCount = Math.min(count, allocatable);
         
         // 記錄原始值以便偵錯
-        console.log(`減少庫存前 ${size}: 總數=${inventory[size].total}, 可分配=${allocatable}, 已分配=${inventory[size].allocated}, 預留=${inventory[size].reserved}`);
+        console.log(`%c庫存扣減前狀態 [${size}]: 總數=${inventory[size].total}, 可分配=${allocatable}, 已分配=${inventory[size].allocated}, 預留=${inventory[size].reserved}`, 'color: #3498db;');
         
         // 減少可分配數量並增加已分配數量
         inventory[size].allocatable -= actualCount;
         inventory[size].allocated += actualCount;
         
         // 輸出實際減少的庫存量與更新後的狀態
-        console.log(`減少庫存 ${size}: ${actualCount} 件，剩餘可分配=${inventory[size].allocatable} 件，總分配=${inventory[size].allocated} 件，總預留=${inventory[size].reserved} 件`);
+        const isLongPants = inventoryType === 'longSleevePants' || inventoryType === 'shortSleevePants';
+        const uniformName = isLongPants ? (inventoryType === 'longSleevePants' ? '長褲' : '短褲') : UNIFORM_TYPES[inventoryType] || inventoryType;
+        
+        console.log(`%c✓ ${uniformName}庫存扣減成功 [${size}]: 扣減數量=${actualCount}件`, 
+                   'background: #27ae60; color: white; font-weight: bold; padding: 2px 5px;');
+        console.log(`%c  ├─ 分配前: 可分配=${allocatable}件, 已分配=${inventory[size].allocated - actualCount}件`,
+                   'color: #7f8c8d;');
+        console.log(`%c  ├─ 分配後: 可分配=${inventory[size].allocatable}件, 已分配=${inventory[size].allocated}件`,
+                   'color: #27ae60; font-weight: bold;');
+        console.log(`%c  └─ 總庫存: ${inventory[size].total}件 (已分配${inventory[size].allocated} + 可分配${inventory[size].allocatable} + 預留${inventory[size].reserved})`,
+                   'color: #95a5a6;');
         
         // 確保不會出現負數
         inventory[size].allocatable = Math.max(0, inventory[size].allocatable);
@@ -575,13 +585,14 @@ function decreaseInventory(inventory, size, count, inventoryType) {
                 remaining: inventory[size].allocatable,
                 timestamp: new Date().getTime()
             };
-            console.log(`記錄 ${inventoryType} 尺寸 ${size} 的最後分配狀態: 已分配=${inventory[size].allocated}, 剩餘=${inventory[size].allocatable}`);
+            console.log(`%c📊 記錄${uniformName}尺寸 ${size} 的最後分配狀態: 已分配=${inventory[size].allocated}件, 剩餘可分配=${inventory[size].allocatable}件`, 
+                       'color: #8e44ad; font-style: italic;');
         }
         
         return true;
     }
     
-    console.error(`無法減少庫存: 尺寸 ${size} 不存在於庫存中`);
+    console.error(`%c庫存扣減失敗: 尺寸 ${size} 不存在於庫存中`, 'color: red; font-weight: bold;');
     return false;
 }
 
@@ -3172,7 +3183,10 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
         
         // 開始分配
         console.log('%c開始按順序分配', 'background: #2ecc71; color: white; font-size: 14px; padding: 5px;');
+        let studentIndex = 0; // 學生分配序號計數器
         for (const student of sortedStudentsForPants) {
+            studentIndex++; // 遞增學生序號
+            
             // 清除之前的分配結果和標記
             student[allocatedField] = '';
             student[adjustmentMarkField] = null;
@@ -3183,13 +3197,19 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
             const requiredCount = student[studentPantsCountField] || 0;
             if (requiredCount <= 0) {
                 // 不需要分配
+                console.log(`%c[第${studentIndex}/${sortedStudentsForPants.length}個學生] ${student.name} (${student.class}-${student.number}) - 跳過分配（需求數量為0）`, 'color: #95a5a6; font-style: italic;');
                 continue;
             }
             
             const sum = (student.chest || 0) + (student.waist || 0);
             
-            console.log(`\n處理學生: ${student.name} (${student.class}-${student.number})`);
-            console.log(`  性別=${student.gender}, 胸圍=${student.chest}, 腰圍=${student.waist}, 總和=${sum}, 褲長=${student.pantsLength}, 需求=${requiredCount}件`);
+            console.log(`%c\n┌─────────────────────────────────────────────────────────────────┐`, 'color: #3498db; font-weight: bold;');
+            console.log(`%c│ 🎯 [第${studentIndex}/${sortedStudentsForPants.length}個學生] ${UNIFORM_TYPES[inventoryType]}分配開始`, 'background: #3498db; color: white; font-weight: bold; padding: 2px;');
+            console.log(`%c├─────────────────────────────────────────────────────────────────┤`, 'color: #3498db;');
+            console.log(`%c│ 👤 學生資料: ${student.name} (${student.class}-${student.number})`, 'color: #2c3e50; font-weight: bold;');
+            console.log(`%c│ 📊 身體數據: 性別=${student.gender}, 胸圍=${student.chest}, 腰圍=${student.waist}, 總和=${sum}, 褲長=${student.pantsLength}`, 'color: #2c3e50;');
+            console.log(`%c│ 📦 需求數量: ${requiredCount}件`, 'color: #2c3e50;');
+            console.log(`%c└─────────────────────────────────────────────────────────────────┘`, 'color: #3498db;');
 
             // 從最小尺碼開始尋找可用尺碼
             let targetSize = null;
@@ -3201,14 +3221,14 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
             }
 
             if (!targetSize) {
-                console.log(`  分配失敗: 無可用尺碼`);
+                console.log(`%c❌ [第${studentIndex}個學生] ${student.name} 分配失敗: 無可用尺碼`, 'color: #e74c3c; font-weight: bold;');
                 student.allocationFailReason = student.allocationFailReason || {};
                 student.allocationFailReason[inventoryType] = '無可用尺碼';
                 stats.failed++;
                 continue;
             }
 
-            console.log(`  初步分配尺碼: ${targetSize}`);
+            console.log(`%c📏 [第${studentIndex}個學生] 初步分配尺碼: ${targetSize}`, 'color: #9b59b6; font-weight: bold;');
             
             // 褲長監聽器
             let finalSize = targetSize;
@@ -3216,24 +3236,24 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
             const sizeValue = getLengthValueFromSize(targetSize);
             const pantsLengthDiff = (student.pantsLength || 0) - sizeValue;
             
-            console.log(`  褲長監聽器: 褲長=${student.pantsLength}, 尺碼值=${sizeValue}, 差值=${pantsLengthDiff}`);
+            console.log(`%c🔍 [第${studentIndex}個學生] 褲長監聽器檢查: 褲長=${student.pantsLength}, 尺碼值=${sizeValue}, 差值=${pantsLengthDiff}`, 'color: #f39c12;');
 
             if (pantsLengthDiff >= 1 && pantsLengthDiff < 3) {
                 // 需要升級1個尺碼
-                console.log(`  需要升級1個尺碼 (差值${pantsLengthDiff}在1-3之間)`);
+                console.log(`%c⬆️ [第${studentIndex}個學生] 需要升級1個尺碼 (差值${pantsLengthDiff}在1-3之間)`, 'color: #e67e22;');
                 const nextSize = getNextLargerSize(finalSize);
                 
                 if (nextSize && workingInventory[nextSize]?.allocatable >= requiredCount) {
                     finalSize = nextSize;
                     adjustmentMark = '↑';
                     stats.pantsSizeAdjusted++;
-                    console.log(`  成功升級到 ${finalSize}`);
+                    console.log(`%c✅ [第${studentIndex}個學生] 成功升級到 ${finalSize}`, 'color: #27ae60; font-weight: bold;');
                 } else {
-                    console.log(`  升級失敗: ${nextSize ? `${nextSize}庫存不足` : '沒有更大尺碼'}`);
+                    console.log(`%c❌ [第${studentIndex}個學生] 升級失敗: ${nextSize ? `${nextSize}庫存不足` : '沒有更大尺碼'}`, 'color: #e74c3c;');
                 }
             } else if (pantsLengthDiff >= 3) {
                 // 需要升級2個尺碼
-                console.log(`  需要升級2個尺碼 (差值${pantsLengthDiff}>=3)`);
+                console.log(`%c⬆️⬆️ [第${studentIndex}個學生] 需要升級2個尺碼 (差值${pantsLengthDiff}>=3)`, 'color: #e67e22; font-weight: bold;');
                 let tempSize = finalSize;
                 let upgradeCount = 0;
                 
@@ -3251,12 +3271,12 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
                     finalSize = tempSize;
                     adjustmentMark = '↑2';
                     stats.pantsSizeDoubleAdjusted++;
-                    console.log(`  成功升級2個尺碼到 ${finalSize}`);
+                    console.log(`%c✅ [第${studentIndex}個學生] 成功升級2個尺碼到 ${finalSize}`, 'color: #27ae60; font-weight: bold;');
                 } else if (upgradeCount === 1) {
                     finalSize = tempSize;
                     adjustmentMark = '↑';
                     stats.pantsSizeAdjusted++;
-                    console.log(`  只能升級1個尺碼到 ${finalSize}`);
+                    console.log(`%c⚠️ [第${studentIndex}個學生] 只能升級1個尺碼到 ${finalSize}`, 'color: #f39c12; font-weight: bold;');
                 }
             }
 
@@ -3277,8 +3297,8 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
 
             // 執行交換
             if (needExchange && exchangeTargetSize) {
-                console.log(`  女生符合交換條件: 尺碼=${finalSize}, 褲長=${student.pantsLength}`);
-                console.log(`  尋找${exchangeTargetSize}的男生進行交換...`);
+                console.log(`%c🔄 [第${studentIndex}個學生] 女生符合交換條件: 尺碼=${finalSize}, 褲長=${student.pantsLength}`, 'color: #e67e22; font-weight: bold;');
+                console.log(`%c🔍 [第${studentIndex}個學生] 尋找${exchangeTargetSize}的男生進行交換...`, 'color: #f39c12;');
                 
                 // 尋找合適的男生交換
                 let exchanged = false;
@@ -3299,7 +3319,7 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
                     const maleStudent = targetMaleStudents[0];
                     const maleSum = (maleStudent.waist || 0) + (maleStudent.chest || 0) + (maleStudent.pantsLength || 0);
                     
-                    console.log(`  找到可交換的男生: ${maleStudent.name} (總和=${maleSum})`);
+                    console.log(`%c👨 [第${studentIndex}個學生] 找到可交換的男生: ${maleStudent.name} (總和=${maleSum})`, 'color: #3498db; font-weight: bold;');
                     
                     // 交換邏輯：
                     // 1. 男生原本使用 exchangeTargetSize，現在要改用 finalSize
@@ -3309,31 +3329,48 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
                     
                     // 檢查女生原本要的尺碼是否有庫存給男生
                     if (workingInventory[finalSize] && workingInventory[finalSize].allocatable >= requiredCount) {
+                        console.log(`%c開始執行女生與男生庫存交換作業`, 'background: #e74c3c; color: white; font-weight: bold; padding: 3px;');
+                        console.log(`  📊 交換前庫存狀態:`);
+                        console.log(`    ${finalSize}: 可分配=${workingInventory[finalSize].allocatable}件, 已分配=${workingInventory[finalSize].allocated}件`);
+                        console.log(`    ${exchangeTargetSize}: 可分配=${workingInventory[exchangeTargetSize].allocatable}件, 已分配=${workingInventory[exchangeTargetSize].allocated}件`);
+                        
                         // 為男生扣減新尺碼的庫存
-                        workingInventory[finalSize].allocatable -= requiredCount;
-                        workingInventory[finalSize].allocated += requiredCount;
+                        console.log(`  🔄 為男生 ${maleStudent.name} 在尺寸 ${finalSize} 扣減 ${requiredCount} 件庫存`);
+                        const maleDecreaseSuccess = decreaseInventory(workingInventory, finalSize, requiredCount, inventoryType);
                         
                         // 釋放男生原本的尺碼（因為要給女生用）
+                        console.log(`  🔄 釋放男生 ${maleStudent.name} 原本佔用的尺寸 ${exchangeTargetSize} 共 ${requiredCount} 件庫存`);
                         workingInventory[exchangeTargetSize].allocatable += requiredCount;
                         workingInventory[exchangeTargetSize].allocated -= requiredCount;
+                        console.log(`%c  ✅ 釋放庫存完成 [${exchangeTargetSize}]: 可分配=${workingInventory[exchangeTargetSize].allocatable}件, 已分配=${workingInventory[exchangeTargetSize].allocated}件`, 'color: #27ae60;');
                         
-                        // 執行交換
-                        maleStudent[allocatedField] = finalSize;
-                        maleStudent[adjustmentMarkField] = '*';
-                        finalSize = exchangeTargetSize;
-                        adjustmentMark = '↓';
-                        
-                        stats.femaleExchanged++;
-                        stats.maleExchanged++;
-                        exchanged = true;
-                        
-                        console.log(`  交換成功: 女生${student.name}得到${finalSize}↓, 男生${maleStudent.name}得到${maleStudent[allocatedField]}*`);
+                        if (maleDecreaseSuccess) {
+                            // 執行交換
+                            maleStudent[allocatedField] = finalSize;
+                            maleStudent[adjustmentMarkField] = '*';
+                            finalSize = exchangeTargetSize;
+                            adjustmentMark = '↓';
+                            
+                            stats.femaleExchanged++;
+                            stats.maleExchanged++;
+                            exchanged = true;
+                            
+                            console.log(`%c🔄 庫存交換成功完成！`, 'background: #27ae60; color: white; font-weight: bold; padding: 3px;');
+                            console.log(`  👩 女生 ${student.name} 最終分配: ${finalSize}↓ (${requiredCount}件)`);
+                            console.log(`  👨 男生 ${maleStudent.name} 最終分配: ${maleStudent[allocatedField]}* (${requiredCount}件)`);
+                            console.log(`  📊 交換後庫存狀態:`);
+                            console.log(`    ${maleStudent[allocatedField]}: 可分配=${workingInventory[maleStudent[allocatedField]].allocatable}件, 已分配=${workingInventory[maleStudent[allocatedField]].allocated}件`);
+                            console.log(`    ${finalSize}: 可分配=${workingInventory[finalSize].allocatable}件, 已分配=${workingInventory[finalSize].allocated}件`);
+                        } else {
+                            console.error(`%c❌ [第${studentIndex}個學生] 男生庫存扣減失敗，交換中止`, 'color: red; font-weight: bold;');
+                            exchanged = false;
+                        }
                     } else {
-                        console.log(`  交換失敗: ${finalSize}庫存不足，無法分配給男生`);
+                        console.log(`%c❌ [第${studentIndex}個學生] 交換失敗: ${finalSize}庫存不足，無法分配給男生`, 'color: #e74c3c; font-weight: bold;');
                         exchanged = false;
                     }
                 } else {
-                    console.log(`  找不到合適的男生交換，維持原尺碼`);
+                    console.log(`%c⚠️ [第${studentIndex}個學生] 找不到合適的男生交換，維持原尺碼`, 'color: #f39c12; font-weight: bold;');
                 }
             }
             
@@ -3350,27 +3387,43 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
                 // 記錄到已分配列表
                 allocatedStudents.push(student);
                 
-                console.log(`%c${UNIFORM_TYPES[inventoryType]}分配成功（交換）：${student.name} => ${finalSize}${adjustmentMark || ''} (需求${requiredCount}件)`, 
-                          'color: #27ae60; font-weight: bold;');
+                console.log(`%c🎉 [第${studentIndex}個學生] ${UNIFORM_TYPES[inventoryType]}分配成功（女生交換）：${student.name} => ${finalSize}${adjustmentMark || ''} (需求${requiredCount}件)`, 
+                          'background: #e67e22; color: white; font-weight: bold; padding: 3px;');
+                console.log(`%c  🔄 此次分配透過女生交換機制完成，無需額外庫存扣減`, 'color: #d35400; font-style: italic;');
+                console.log(`%c  📋 女生 ${student.name} 最終分配結果: 尺寸=${finalSize}, 調整標記=${adjustmentMark || '無'}`, 'color: #2980b9;');
             } else if (workingInventory[finalSize] && workingInventory[finalSize].allocatable >= requiredCount) {
                 // 正常分配情況
-                workingInventory[finalSize].allocatable -= requiredCount;
-                workingInventory[finalSize].allocated += requiredCount;
+                console.log(`%c💰 [第${studentIndex}個學生] 開始為學生 ${student.name} 進行庫存扣減作業`, 'background: #2ecc71; color: white; font-weight: bold; padding: 3px;');
+                console.log(`%c  👤 學生資料: ${student.name} (${student.class}-${student.number}), 性別=${student.gender}`, 'color: #2c3e50;');
+                console.log(`%c  📏 分配尺寸: ${finalSize}${adjustmentMark || ''}, 需求數量: ${requiredCount}件`, 'color: #2c3e50;');
+                console.log(`%c  📊 扣減前庫存狀態 [${finalSize}]: 可分配=${workingInventory[finalSize].allocatable}件, 已分配=${workingInventory[finalSize].allocated}件`, 'color: #2c3e50;');
                 
-                student[allocatedField] = finalSize;
-                student[adjustmentMarkField] = adjustmentMark;
-                stats.allocated++;
+                // 執行庫存扣減
+                const decreaseSuccess = decreaseInventory(workingInventory, finalSize, requiredCount, inventoryType);
                 
-                // 記錄到已分配列表
-                allocatedStudents.push(student);
-                
-                console.log(`%c${UNIFORM_TYPES[inventoryType]}分配成功：${student.name} => ${finalSize}${adjustmentMark || ''} (需求${requiredCount}件)`, 
-                          'color: #27ae60; font-weight: bold;');
+                if (decreaseSuccess) {
+                    student[allocatedField] = finalSize;
+                    student[adjustmentMarkField] = adjustmentMark;
+                    stats.allocated++;
+                    
+                    // 記錄到已分配列表
+                    allocatedStudents.push(student);
+                    
+                    console.log(`%c🎉 [第${studentIndex}個學生] ${UNIFORM_TYPES[inventoryType]}分配成功：${student.name} => ${finalSize}${adjustmentMark || ''} (需求${requiredCount}件)`, 
+                              'background: #27ae60; color: white; font-weight: bold; padding: 3px;');
+                    console.log(`%c  ✅ 庫存扣減完成，扣減數量: ${requiredCount}件`, 'color: #27ae60; font-weight: bold;');
+                    console.log(`%c  📋 學生 ${student.name} 最終分配結果: 尺寸=${finalSize}, 調整標記=${adjustmentMark || '無'}`, 'color: #2980b9;');
+                } else {
+                    student.allocationFailReason = student.allocationFailReason || {};
+                    student.allocationFailReason[inventoryType] = '庫存扣減失敗';
+                    stats.failed++;
+                    console.error(`%c❌ [第${studentIndex}個學生] 學生 ${student.name} 分配失敗：庫存扣減異常`, 'color: red; font-weight: bold;');
+                }
             } else {
                 student.allocationFailReason = student.allocationFailReason || {};
                 student.allocationFailReason[inventoryType] = '庫存不足';
                 stats.failed++;
-                console.error(`分配失敗：庫存不足`);
+                console.error(`%c❌ [第${studentIndex}個學生] ${student.name} 分配失敗：庫存不足`, 'color: #e74c3c; font-weight: bold;');
             }
         }
 
@@ -3399,10 +3452,43 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
         console.log(`- 女生交換(↓)：${stats.femaleExchanged}人`);
         console.log(`- 男生交換(*)：${stats.maleExchanged}人`);
         
-        console.log('%c剩餘庫存狀態：', 'color: #3498db; font-weight: bold;');
+        console.log(`%c📊 ${UNIFORM_TYPES[inventoryType]}最終庫存分配狀態詳情：`, 'background: #34495e; color: white; font-size: 14px; font-weight: bold; padding: 5px;');
+        console.log(`%c┌─────────────────────────────────────────────────────────────────────┐`, 'color: #34495e;');
+        console.log(`%c│                       尺寸庫存分配詳細報表                         │`, 'color: #34495e; font-weight: bold;');
+        console.log(`%c├─────────────────────────────────────────────────────────────────────┤`, 'color: #34495e;');
+        
+        let totalAllocated = 0, totalRemaining = 0, totalReserved = 0, totalItems = 0;
+        
         for (const size in workingInventory) {
             const inv = workingInventory[size];
-            console.log(`  ${size}: 可分配=${inv.allocatable}, 已分配=${inv.allocated}`);
+            totalAllocated += inv.allocated || 0;
+            totalRemaining += inv.allocatable || 0;
+            totalReserved += inv.reserved || 0;
+            totalItems += inv.total || 0;
+            
+            const allocatedPercent = inv.total ? ((inv.allocated / inv.total) * 100).toFixed(1) : '0.0';
+            
+            console.log(`%c│ ${size.padEnd(8)} │ 總數:${String(inv.total || 0).padStart(3)} │ 已分配:${String(inv.allocated || 0).padStart(3)} (${allocatedPercent}%) │ 可分配:${String(inv.allocatable || 0).padStart(3)} │ 預留:${String(inv.reserved || 0).padStart(3)} │`, 
+                       inv.allocatable === 0 ? 'color: #e74c3c;' : 'color: #2c3e50;');
+        }
+        
+        console.log(`%c├─────────────────────────────────────────────────────────────────────┤`, 'color: #34495e;');
+        const overallAllocatedPercent = totalItems ? ((totalAllocated / totalItems) * 100).toFixed(1) : '0.0';
+        console.log(`%c│ 總計     │ 總數:${String(totalItems).padStart(3)} │ 已分配:${String(totalAllocated).padStart(3)} (${overallAllocatedPercent}%) │ 可分配:${String(totalRemaining).padStart(3)} │ 預留:${String(totalReserved).padStart(3)} │`, 
+                   'color: #2980b9; font-weight: bold;');
+        console.log(`%c└─────────────────────────────────────────────────────────────────────┘`, 'color: #34495e;');
+        
+        // 顯示庫存警示
+        const lowStockSizes = Object.keys(workingInventory).filter(size => workingInventory[size].allocatable === 0);
+        if (lowStockSizes.length > 0) {
+            console.log(`%c⚠️  庫存警示：以下尺寸已無可分配庫存：${lowStockSizes.join(', ')}`, 'color: #e74c3c; font-weight: bold;');
+        }
+        
+        const nearEmptySizes = Object.keys(workingInventory).filter(size => 
+            workingInventory[size].allocatable > 0 && workingInventory[size].allocatable <= 5
+        );
+        if (nearEmptySizes.length > 0) {
+            console.log(`%c🔔 庫存提醒：以下尺寸庫存偏低(≤5件)：${nearEmptySizes.map(s => `${s}(${workingInventory[s].allocatable}件)`).join(', ')}`, 'color: #f39c12; font-weight: bold;');
         }
         
         console.log(`%c===== ${UNIFORM_TYPES[inventoryType]}分配完成 =====`, 'background: #f39c12; color: white; font-size: 14px; padding: 5px;');
