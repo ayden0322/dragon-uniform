@@ -2836,6 +2836,23 @@ function createStudentDetailWorksheet() {
         // 確定是否為女生
         const isFemale = student.gender === '女';
         
+        // 處理件數欄位 - 分配失敗時顯示需求件數
+        const shortShirtCount = student.allocatedShirtSize ? 
+            (student.shortSleeveShirtCount || 1) : 
+            (shortShirtSize === simplifiedFailureMessage ? (student.shortSleeveShirtCount || 0) : '-');
+            
+        const shortPantsCount = student.allocatedPantsSize ? 
+            (student.shortSleevePantsCount || 1) : 
+            (shortPantsSize === simplifiedFailureMessage ? (student.shortSleevePantsCount || 0) : '-');
+            
+        const longShirtCount = student.allocatedLongShirtSize ? 
+            (student.longSleeveShirtCount || 1) : 
+            (longShirtSize === simplifiedFailureMessage ? (student.longSleeveShirtCount || 0) : '-');
+            
+        const longPantsCount = student.allocatedLongPantsSize ? 
+            (student.longSleevePantsCount || 1) : 
+            (longPantsSize === simplifiedFailureMessage ? (student.longSleevePantsCount || 0) : '-');
+
         // 創建行數據，為女生添加樣式
         const rowData = [
             { v: index + 1, t: 'n', s: isFemale ? femaleStyle : null },
@@ -2847,13 +2864,13 @@ function createStudentDetailWorksheet() {
             { v: student.waist || '', t: student.waist ? 'n' : 's', s: isFemale ? femaleStyle : null },
             { v: student.pantsLength || '', t: student.pantsLength ? 'n' : 's', s: isFemale ? femaleStyle : null },
             { v: shortShirtSize, t: 's' },
-            { v: student.allocatedShirtSize ? (student.shortSleeveShirtCount || 1) : '-', t: 's' },
+            { v: shortShirtCount, t: 's' },
             { v: shortPantsSize, t: 's' },
-            { v: student.allocatedPantsSize ? (student.shortSleevePantsCount || 1) : '-', t: 's' },
+            { v: shortPantsCount, t: 's' },
             { v: longShirtSize, t: 's' },
-            { v: student.allocatedLongShirtSize ? (student.longSleeveShirtCount || 1) : '-', t: 's' },
+            { v: longShirtCount, t: 's' },
             { v: longPantsSize, t: 's' },
-            { v: student.allocatedLongPantsSize ? (student.longSleevePantsCount || 1) : '-', t: 's' }
+            { v: longPantsCount, t: 's' }
         ];
         
         data.push(rowData);
