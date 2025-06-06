@@ -116,16 +116,14 @@ export function handleExcelImport(file) {
                 
                 // 解析學生資料
                 const newStudentData = [];
-                const incompleteStudents = [];
                 
                 for (let i = 1; i < jsonData.length; i++) {
                     const row = jsonData[i];
                     
-                    // 跳過空行
-                    if (row.length === 0 || !row[0]) continue;
+                    // 跳過完全空行
+                    if (row.length === 0 || row.every(cell => !cell && cell !== 0)) continue;
                     
                     const student = {};
-                    let isComplete = true;
                     
                     // 依標頭配對資料
                     headers.forEach((header, index) => {
@@ -133,109 +131,65 @@ export function handleExcelImport(file) {
                         const normalizedHeader = normalizeCellData(header);
                         
                         // 配對資料欄位
-                        if (index < row.length) {
-                            const cellValue = normalizeCellData(row[index]);
-                            
-                            switch (normalizedHeader) {
-                                case '班級':
-                                case '班':
-                                    student.class = cellValue;
-                                    if (!cellValue) isComplete = false;
-                                    break;
-                                case '座號':
-                                case '號碼':
-                                    student.number = cellValue;
-                                    if (!cellValue) isComplete = false;
-                                    break;
-                                case '姓名':
-                                case '學生姓名':
-                                    student.name = cellValue;
-                                    if (!cellValue) isComplete = false;
-                                    break;
-                                case '性別':
-                                    student.gender = cellValue;
-                                    if (!cellValue) isComplete = false;
-                                    break;
-                                case '胸圍':
-                                case '胸':
-                                    student.chest = parseFloat(cellValue) || 0;
-                                    if (!cellValue) isComplete = false;
-                                    break;
-                                case '腰圍':
-                                case '腰':
-                                    student.waist = parseFloat(cellValue) || 0;
-                                    if (!cellValue) isComplete = false;
-                                    break;
-                                case '褲長':
-                                    student.pantsLength = parseFloat(cellValue) || 0;
-                                    if (!cellValue) isComplete = false;
-                                    break;
-                                case '短衣件數':
-                                case '短袖上衣件數':
-                                    // 確保件數是非負整數
-                                    let shortShirtCount = parseInt(cellValue);
-                                    student.shortSleeveShirtCount = (shortShirtCount >= 0) ? shortShirtCount : 0;
-                                    if (cellValue === '') isComplete = false;
-                                    break;
-                                case '短褲件數':
-                                case '短袖褲子件數':
-                                    let shortPantsCount = parseInt(cellValue);
-                                    student.shortSleevePantsCount = (shortPantsCount >= 0) ? shortPantsCount : 0;
-                                    if (cellValue === '') isComplete = false;
-                                    break;
-                                case '長衣件數':
-                                case '長袖上衣件數':
-                                    let longShirtCount = parseInt(cellValue);
-                                    student.longSleeveShirtCount = (longShirtCount >= 0) ? longShirtCount : 0;
-                                    if (cellValue === '') isComplete = false;
-                                    break;
-                                case '長褲件數':
-                                case '長袖褲子件數':
-                                    let longPantsCount = parseInt(cellValue);
-                                    student.longSleevePantsCount = (longPantsCount >= 0) ? longPantsCount : 0;
-                                    if (cellValue === '') isComplete = false;
-                                    break;
-                                default:
-                                    break;
-                            }
-                        } else {
-                            // 如果缺少欄位，則標記為不完整
-                            isComplete = false;
+                        const cellValue = index < row.length ? normalizeCellData(row[index]) : '';
+                        
+                        switch (normalizedHeader) {
+                            case '班級':
+                            case '班':
+                                student.class = cellValue || '';
+                                break;
+                            case '座號':
+                            case '號碼':
+                                student.number = cellValue || '';
+                                break;
+                            case '姓名':
+                            case '學生姓名':
+                                student.name = cellValue || '';
+                                break;
+                            case '性別':
+                                student.gender = cellValue || '';
+                                break;
+                            case '胸圍':
+                            case '胸':
+                                // 只有在有數值時才設定，否則為空字串
+                                student.chest = cellValue && !isNaN(parseFloat(cellValue)) ? parseFloat(cellValue) : '';
+                                break;
+                            case '腰圍':
+                            case '腰':
+                                // 只有在有數值時才設定，否則為空字串
+                                student.waist = cellValue && !isNaN(parseFloat(cellValue)) ? parseFloat(cellValue) : '';
+                                break;
+                            case '褲長':
+                                // 只有在有數值時才設定，否則為空字串
+                                student.pantsLength = cellValue && !isNaN(parseFloat(cellValue)) ? parseFloat(cellValue) : '';
+                                break;
+                            case '短衣件數':
+                            case '短袖上衣件數':
+                                // 空白視為0，有數值時才轉換
+                                student.shortSleeveShirtCount = cellValue && !isNaN(parseInt(cellValue)) ? Math.max(0, parseInt(cellValue)) : 0;
+                                break;
+                            case '短褲件數':
+                            case '短袖褲子件數':
+                                // 空白視為0，有數值時才轉換
+                                student.shortSleevePantsCount = cellValue && !isNaN(parseInt(cellValue)) ? Math.max(0, parseInt(cellValue)) : 0;
+                                break;
+                            case '長衣件數':
+                            case '長袖上衣件數':
+                                // 空白視為0，有數值時才轉換
+                                student.longSleeveShirtCount = cellValue && !isNaN(parseInt(cellValue)) ? Math.max(0, parseInt(cellValue)) : 0;
+                                break;
+                            case '長褲件數':
+                            case '長袖褲子件數':
+                                // 空白視為0，有數值時才轉換
+                                student.longSleevePantsCount = cellValue && !isNaN(parseInt(cellValue)) ? Math.max(0, parseInt(cellValue)) : 0;
+                                break;
+                            default:
+                                break;
                         }
                     });
                     
-                    // 只有在資料完整時才添加學生資料
-                    if (isComplete) {
-                        // 確保所有件數欄位都有值，沒有的話默認為0
-                        student.shortSleeveShirtCount = student.shortSleeveShirtCount || 0;
-                        student.shortSleevePantsCount = student.shortSleevePantsCount || 0;
-                        student.longSleeveShirtCount = student.longSleeveShirtCount || 0;
-                        student.longSleevePantsCount = student.longSleevePantsCount || 0;
-                        
-                        newStudentData.push(student);
-                    } else {
-                        // 記錄不完整的學生資料
-                        incompleteStudents.push({
-                            row: i + 1,
-                            data: row,
-                            student: student
-                        });
-                    }
-                }
-                
-                // 處理不完整的學生資料
-                if (incompleteStudents.length > 0) {
-                    // 整理不完整的學生資料以顯示
-                    const incompleteMessage = incompleteStudents.map(item => {
-                        let details = `第 ${item.row} 行: `;
-                        if (item.student.class) details += `班級=${item.student.class}, `;
-                        if (item.student.number) details += `號碼=${item.student.number}, `;
-                        if (item.student.name) details += `姓名=${item.student.name}`;
-                        return details;
-                    }).join('\n');
-                    
-                    // 顯示不完整資料的通知
-                    alert(`發現 ${incompleteStudents.length} 筆資料不完整，這些資料將被忽略：\n\n${incompleteMessage}`);
+                    // 所有學生資料都加入，不再檢查完整性
+                    newStudentData.push(student);
                 }
                 
                 if (newStudentData.length === 0) {
@@ -265,7 +219,7 @@ export function handleExcelImport(file) {
                 // 更新UI
                 initStudentTable();
                 
-                showAlert(`成功匯入 ${newStudentData.length} 筆學生資料${incompleteStudents.length > 0 ? `（忽略 ${incompleteStudents.length} 筆不完整資料）` : ''}`, 'success');
+                showAlert(`成功匯入 ${newStudentData.length} 筆學生資料`, 'success');
                 resolve(true);
             } catch (error) {
                 console.error('匯入失敗:', error);
@@ -575,6 +529,31 @@ export function updateStudentAllocationUI() {
     // 不再需要更新分配結果，因為表格中已經沒有這兩列
     // 保留此函數以維持兼容性
     console.log('學生分配UI更新 - 已停用表格中的分配列顯示');
+}
+
+/**
+ * 檢查學生是否具備參與分配的必要條件
+ * @param {Object} student - 學生資料
+ * @returns {boolean} - 是否具備參與分配的條件
+ */
+export function canParticipateInAllocation(student) {
+    // 必須同時具備胸圍、腰圍、褲長才能參與分配
+    return student.chest !== '' && student.chest !== null && student.chest !== undefined && 
+           student.waist !== '' && student.waist !== null && student.waist !== undefined && 
+           student.pantsLength !== '' && student.pantsLength !== null && student.pantsLength !== undefined &&
+           !isNaN(parseFloat(student.chest)) && !isNaN(parseFloat(student.waist)) && !isNaN(parseFloat(student.pantsLength));
+}
+
+/**
+ * 檢查學生是否需要特定類型的制服
+ * @param {Object} student - 學生資料
+ * @param {string} uniformType - 制服類型 ('shortSleeveShirt', 'shortSleevePants', 'longSleeveShirt', 'longSleevePants')
+ * @returns {boolean} - 是否需要該類型制服
+ */
+export function needsUniform(student, uniformType) {
+    const countField = uniformType + 'Count';
+    const count = student[countField];
+    return count && count > 0;
 }
 
 /**

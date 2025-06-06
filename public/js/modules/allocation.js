@@ -2,7 +2,7 @@
 import { saveToLocalStorage, loadFromLocalStorage, showAlert, downloadExcel } from './utils.js';
 import { SIZES, UNIFORM_TYPES, formatSize, currentSizeDisplayMode, SIZE_DISPLAY_MODES, getFemaleChestAdjustment, getCurrentSchoolConfig } from './config.js';
 import { inventoryData, calculateTotalInventory, updateInventoryUI, manualAdjustments, initInventoryFeatures, saveManualAdjustments, saveManualAdjustmentsSilent, calculateReservedQuantities } from './inventory.js';
-import { studentData, sortedStudentData, demandData, updateStudentAllocationUI, updateAdjustmentPage } from './students.js';
+import { studentData, sortedStudentData, demandData, updateStudentAllocationUI, updateAdjustmentPage, canParticipateInAllocation, needsUniform } from './students.js';
 import { updateAllocationRatios, formatSizeWithAdjustment } from './ui.js';
 
 // 記錄最後分配狀態
@@ -602,7 +602,9 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
         
         let totalDemand = 0;
         _localSortedStudentData.forEach(student => {
-            totalDemand += student.shortSleeveShirtCount || 1;
+            // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
+            const count = (student.shortSleeveShirtCount == null) ? 1 : parseInt(student.shortSleeveShirtCount, 10) || 0;
+            totalDemand += count;
         });
         
         let totalAllocatable = 0;
@@ -642,11 +644,21 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
                 continue;
             }
             
-            const requiredCount = student.shortSleeveShirtCount || 1;
+            // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
+            const requiredCount = (student.shortSleeveShirtCount == null) ? 1 : parseInt(student.shortSleeveShirtCount, 10) || 0;
             student.shirtAllocationMark = ''; // Initialize/reset mark for current student
 
             console.log(`%c處理短衣分配給學生：${student.name}(${student.gender}，班級：${student.class}，座號：${student.number})`, 'color: #2c3e50; font-weight: bold;');
             console.log(`- 胸圍：${student.chest}，腰圍：${student.waist}，褲長：${student.pantsLength}，有效胸圍：${effectiveChest}，需求：${requiredCount}`);
+
+            // 檢查學生是否具備參與分配的必要條件
+            if (!canParticipateInAllocation(student)) {
+                student.allocationFailReason = student.allocationFailReason || {};
+                student.allocationFailReason[inventoryType] = '缺少必要資料：需要胸圍、腰圍、褲長';
+                console.log(`學生缺少參與分配的必要條件（胸圍、腰圍、褲長），跳過`);
+                stats.failed++;
+                continue;
+            }
 
             if (requiredCount <= 0) {
                 student.allocationFailReason = student.allocationFailReason || {};
@@ -847,7 +859,11 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
         } // End student loop
 
         // Second stage for unallocated students (simplified)
-        const unallocatedStudents = _localSortedStudentData.filter(s => !s[allocatedField] && (s.shortSleeveShirtCount || 1) > 0 && !s.allocationFailReason?.[inventoryType]);
+        // 篩選未分配的學生：沒有分配結果、有短衣需求、且沒有分配失敗原因
+        const unallocatedStudents = _localSortedStudentData.filter(s => {
+            const count = (s.shortSleeveShirtCount == null) ? 1 : parseInt(s.shortSleeveShirtCount, 10) || 0;
+            return !s[allocatedField] && count > 0 && !s.allocationFailReason?.[inventoryType];
+        });
         if (unallocatedStudents.length > 0) {
             console.log(`%c第二階段短衣分配開始：處理 ${unallocatedStudents.length} 名未分配學生`, 'background: #8e44ad; color: white; font-size: 12px; padding: 3px;');
             let allAvailableSizesStage2 = Object.keys(remainingInventory)
@@ -856,7 +872,8 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
             .sort((a, b) => SIZES.indexOf(a.size) - SIZES.indexOf(b.size));
         
             for (const {student, effectiveChest} of unallocatedStudents.map(s => ({student: s, effectiveChest: Math.max(s.chest || 0, s.waist || 0)}))) {
-                 const requiredCount = student.shortSleeveShirtCount || 1;
+                 // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
+                 const requiredCount = (student.shortSleeveShirtCount == null) ? 1 : parseInt(student.shortSleeveShirtCount, 10) || 0;
                  student.shirtAllocationMark = student.shirtAllocationMark || ''; // Initialize if somehow missed
 
                 if (allAvailableSizesStage2.length === 0) {
@@ -961,7 +978,9 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
         
         let totalDemand = 0;
         _localSortedStudentData.forEach(student => {
-            totalDemand += student.shortSleevePantsCount || 1; // Ensure this uses the correct count field
+            // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
+            const count = (student.shortSleevePantsCount == null) ? 1 : parseInt(student.shortSleevePantsCount, 10) || 0;
+            totalDemand += count;
         });
         
         let totalAllocatable = 0;
@@ -1059,6 +1078,15 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
         for (const student of _localSortedStudentData) {
             student.pantsAdjustmentMark = null; // Reset for each student per allocation run
 
+            // 檢查學生是否具備參與分配的必要條件
+            if (!canParticipateInAllocation(student)) {
+                student.allocationFailReason = student.allocationFailReason || {};
+                student.allocationFailReason[inventoryType] = '缺少必要資料：需要胸圍、腰圍、褲長';
+                console.log(`學生 [${student.id}] ${student.class || ''}-${student.number || ''} ${student.name || ''} 缺少參與分配的必要條件（胸圍、腰圍、褲長），跳過`);
+                failedCount++;
+                continue;
+            }
+
             if (student.shortSleevePantsCount && student.shortSleevePantsCount > 0) { // Corrected count field
                 console.log(`\\n分配學生 [${student.id}] ${student.class || ''}-${student.number || ''} ${student.name || ''} (${inventoryType} 新規則): 腰圍=${student.waist}, 褲長=${student.pantsLength}, 性別=${student.gender}`);
                 
@@ -1139,7 +1167,8 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
                     continue; 
                 }
                 
-                const requiredCount = student.shortSleevePantsCount || 1; // Corrected count field
+                // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
+                const requiredCount = (student.shortSleevePantsCount == null) ? 1 : parseInt(student.shortSleevePantsCount, 10) || 0;
                 
                 if (decreaseInventory(inventoryData[inventoryType], sizeToAllocate, requiredCount, inventoryType)) {
                     student[allocatedField] = sizeToAllocate; // Store the actual allocated size (e.g., "M/38")
@@ -1196,7 +1225,9 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
         
         let totalDemand = 0;
         _localSortedStudentData.forEach(student => {
-            totalDemand += student.longSleeveShirtCount || 1; // 注意這裡是 longSleeveShirtCount
+            // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
+            const count = (student.longSleeveShirtCount == null) ? 1 : parseInt(student.longSleeveShirtCount, 10) || 0;
+            totalDemand += count;
         });
         
         let totalAllocatable = 0;
@@ -1233,11 +1264,21 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
                 continue;
             }
             
-            const requiredCount = student.longSleeveShirtCount || 1;
+            // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
+            const requiredCount = (student.longSleeveShirtCount == null) ? 1 : parseInt(student.longSleeveShirtCount, 10) || 0;
             student.longShirtAllocationMark = ''; 
 
             console.log(`%c處理長衣分配給學生：${student.name}(${student.gender}，班級：${student.class}，座號：${student.number})`, 'color: #8e44ad; font-weight: bold;');
             console.log(`- 胸圍：${student.chest}，腰圍：${student.waist}，褲長：${student.pantsLength}，有效胸圍：${effectiveChest}，需求：${requiredCount}`);
+
+            // 檢查學生是否具備參與分配的必要條件
+            if (!canParticipateInAllocation(student)) {
+                student.allocationFailReason = student.allocationFailReason || {};
+                student.allocationFailReason[inventoryType] = '缺少必要資料：需要胸圍、腰圍、褲長';
+                console.log(`學生缺少參與分配的必要條件（胸圍、腰圍、褲長），跳過`);
+                stats.failed++;
+                continue;
+            }
 
             if (requiredCount <= 0) {
                 student.allocationFailReason = student.allocationFailReason || {};
@@ -1571,6 +1612,15 @@ function allocateLongPants(inventoryType, allocatedField, specialField) {
         
         // 單階段分配過程 - 直接分配
         for (const student of _localSortedStudentData) {
+            // 檢查學生是否具備參與分配的必要條件
+            if (!canParticipateInAllocation(student)) {
+                student.allocationFailReason = student.allocationFailReason || {};
+                student.allocationFailReason[inventoryType] = '缺少必要資料：需要胸圍、腰圍、褲長';
+                console.log(`學生 [${student.id}] ${student.class}-${student.number} ${student.name} 缺少參與分配的必要條件（胸圍、腰圍、褲長），跳過`);
+                failedCount++;
+                continue;
+            }
+
             // 檢查學生是否需要分配長褲
             if (student.longSleevePantsCount && student.longSleevePantsCount > 0) {
                 console.log(`\n分配學生 [${student.id}] ${student.class}-${student.number} ${student.name}: 腰圍=${student.waist}, 褲長=${student.pantsLength}, 性別=${student.gender}`);
@@ -1960,10 +2010,20 @@ function updateStudentDetailedResults() {
         }
         // DEBUGGING CODE BLOCK END
 
-        const shortShirtFailReason = student.allocationFailReason?.shortSleeveShirt || '';
-        const shortPantsFailReason = student.allocationFailReason?.shortSleevePants || '';
-        const longShirtFailReason = student.allocationFailReason?.longSleeveShirt || '';
-        const longPantsFailReason = student.allocationFailReason?.longSleevePants || '';
+        // 取得失敗原因，但排除跳過的情況（這些應該顯示為空白）
+        const getDisplayFailReason = (reason) => {
+            if (!reason) return '';
+            // 如果是被跳過的情況（缺少必要資料或不需要），返回空字串，不顯示失敗信息
+            if (reason.includes('缺少必要資料') || reason.includes('不需要此制服')) {
+                return '';
+            }
+            return reason;
+        };
+        
+        const shortShirtFailReason = getDisplayFailReason(student.allocationFailReason?.shortSleeveShirt);
+        const shortPantsFailReason = getDisplayFailReason(student.allocationFailReason?.shortSleevePants);
+        const longShirtFailReason = getDisplayFailReason(student.allocationFailReason?.longSleeveShirt);
+        const longPantsFailReason = getDisplayFailReason(student.allocationFailReason?.longSleevePants);
         
         // 獲取新的分配標記
         let shirtMark = student.shirtAllocationMark || '';
@@ -2943,9 +3003,22 @@ function allocatePantsNewLogic(students, inventoryType, allocatedField, adjustme
             console.log(`  ${size}: 總數=${inv.total}, 可分配=${inv.allocatable}, 已分配=${inv.allocated}, 預留=${inv.reserved}`);
         }
 
-        // 篩選需要褲子的學生
-        const needPantsStudents = students.filter(s => (s[studentPantsCountField] || 0) > 0);
-        console.log(`需要${UNIFORM_TYPES[inventoryType]}的學生總數: ${needPantsStudents.length}`);
+        // 篩選需要褲子的學生，並且具備參與分配的必要條件
+        const needPantsStudents = students.filter(s => {
+            const needsPants = (s[studentPantsCountField] || 0) > 0;
+            const canParticipate = canParticipateInAllocation(s);
+            
+            if (needsPants && !canParticipate) {
+                // 記錄缺少必要條件的學生
+                s.allocationFailReason = s.allocationFailReason || {};
+                s.allocationFailReason[inventoryType] = '缺少必要資料：需要胸圍、腰圍、褲長';
+                console.log(`學生 ${s.name} (${s.class}-${s.number}) 需要${UNIFORM_TYPES[inventoryType]}但缺少必要條件（胸圍、腰圍、褲長），跳過分配`);
+                stats.failed++;
+            }
+            
+            return needsPants && canParticipate;
+        });
+        console.log(`需要${UNIFORM_TYPES[inventoryType]}且符合條件的學生總數: ${needPantsStudents.length}`);
 
         // 按新邏輯排序學生
         const sortedStudentsForPants = [...needPantsStudents].sort((a, b) => {
