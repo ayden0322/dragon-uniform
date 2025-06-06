@@ -358,8 +358,14 @@ export function initializeDemandData() {
         demandData.longSleevePants.sizeCount[size] = 0;
     });
     
-    // 統計各制服類型的總需求數量（根據學生的各件數欄位）
+    // 統計各制服類型的總需求數量（只統計三圍完整的學生）
     studentData.forEach(student => {
+        // 檢查學生是否具備參與分配的必要條件（三圍完整）
+        if (!canParticipateInAllocation(student)) {
+            console.log(`跳過三圍不完整的學生：${student.name || '未命名'} (班級: ${student.class}, 座號: ${student.number})`);
+            return; // 跳過三圍不完整的學生
+        }
+        
         // 短袖上衣（短衣）需求
         const shortShirtCount = parseInt(student.shortSleeveShirtCount) || 0;
         demandData.shortSleeveShirt.totalDemand += shortShirtCount;
@@ -485,10 +491,13 @@ export function updateAdjustmentPage() {
             return;
         }
         
-        // 更新學生總數
+        // 計算可參與分配的學生總數（三圍完整的學生）
+        const eligibleStudentsCount = sortedStudentData.filter(student => canParticipateInAllocation(student)).length;
+        
+        // 更新學生總數（只顯示可參與分配的學生數）
         const totalStudentsElem = document.getElementById('totalStudentsCount');
         if (totalStudentsElem) {
-            totalStudentsElem.textContent = sortedStudentData.length;
+            totalStudentsElem.textContent = eligibleStudentsCount;
         }
         
         // 更新各制服類型需求

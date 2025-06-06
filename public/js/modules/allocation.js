@@ -203,9 +203,14 @@ export async function startAllocation() {
                 continue;
             }
             
-            // 計算總需求量
+            // 計算總需求量（只計算三圍完整的學生）
             let totalDemand = 0;
             _localSortedStudentData.forEach(student => {
+                // 檢查學生是否具備參與分配的必要條件（三圍完整）
+                if (!canParticipateInAllocation(student)) {
+                    return; // 跳過三圍不完整的學生
+                }
+                
                 totalDemand += student[field] || 1;
             });
             
@@ -602,6 +607,11 @@ function allocateShortShirts(inventoryType, allocatedField, specialField) {
         
         let totalDemand = 0;
         _localSortedStudentData.forEach(student => {
+            // 檢查學生是否具備參與分配的必要條件（三圍完整）
+            if (!canParticipateInAllocation(student)) {
+                return; // 跳過三圍不完整的學生
+            }
+            
             // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
             const count = (student.shortSleeveShirtCount == null) ? 1 : parseInt(student.shortSleeveShirtCount, 10) || 0;
             totalDemand += count;
@@ -978,6 +988,11 @@ function allocateShortPants(inventoryType, allocatedField, specialField) {
         
         let totalDemand = 0;
         _localSortedStudentData.forEach(student => {
+            // 檢查學生是否具備參與分配的必要條件（三圍完整）
+            if (!canParticipateInAllocation(student)) {
+                return; // 跳過三圍不完整的學生
+            }
+            
             // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
             const count = (student.shortSleevePantsCount == null) ? 1 : parseInt(student.shortSleevePantsCount, 10) || 0;
             totalDemand += count;
@@ -1225,6 +1240,11 @@ function allocateLongShirts(inventoryType, allocatedField, specialField) {
         
         let totalDemand = 0;
         _localSortedStudentData.forEach(student => {
+            // 檢查學生是否具備參與分配的必要條件（三圍完整）
+            if (!canParticipateInAllocation(student)) {
+                return; // 跳過三圍不完整的學生
+            }
+            
             // 正確處理需求數：只有當值是 null 或 undefined 時才設為1，空字串和0應該視為0
             const count = (student.longSleeveShirtCount == null) ? 1 : parseInt(student.longSleeveShirtCount, 10) || 0;
             totalDemand += count;
@@ -2436,8 +2456,11 @@ export function updateInventoryAllocationResults() {
  * 生成分配統計資料
  */
 export function generateAllocationStats() {
+    // 計算可參與分配的學生總數（三圍完整的學生）
+    const eligibleStudents = studentData.filter(student => canParticipateInAllocation(student));
+    
     const stats = {
-        totalStudents: studentData.length,
+        totalStudents: eligibleStudents.length,
         allocationRates: {}
     };
 
