@@ -2850,17 +2850,42 @@ function createStudentDetailWorksheet() {
 
         // 如果有分配失敗原因，根據顯示模式決定顯示內容
         if (student.allocationFailReason) {
+            // 檢查是否因為缺少三圍資料而分配失敗
+            const isMissingBodyMeasurements = (reason) => {
+                return reason && reason.includes('缺少必要資料');
+            };
+            
             if (student.allocationFailReason.shortSleeveShirt && !student.allocatedShirtSize) {
-                shortShirtSize = isDebugMode ? student.allocationFailReason.shortSleeveShirt : simplifiedFailureMessage;
+                if (isMissingBodyMeasurements(student.allocationFailReason.shortSleeveShirt)) {
+                    // 缺少三圍資料時，尺寸格保留空白
+                    shortShirtSize = '';
+                } else {
+                    shortShirtSize = isDebugMode ? student.allocationFailReason.shortSleeveShirt : simplifiedFailureMessage;
+                }
             }
             if (student.allocationFailReason.shortSleevePants && !student.allocatedPantsSize) {
-                shortPantsSize = isDebugMode ? student.allocationFailReason.shortSleevePants : simplifiedFailureMessage;
+                if (isMissingBodyMeasurements(student.allocationFailReason.shortSleevePants)) {
+                    // 缺少三圍資料時，尺寸格保留空白
+                    shortPantsSize = '';
+                } else {
+                    shortPantsSize = isDebugMode ? student.allocationFailReason.shortSleevePants : simplifiedFailureMessage;
+                }
             }
             if (student.allocationFailReason.longSleeveShirt && !student.allocatedLongShirtSize) {
-                longShirtSize = isDebugMode ? student.allocationFailReason.longSleeveShirt : simplifiedFailureMessage;
+                if (isMissingBodyMeasurements(student.allocationFailReason.longSleeveShirt)) {
+                    // 缺少三圍資料時，尺寸格保留空白
+                    longShirtSize = '';
+                } else {
+                    longShirtSize = isDebugMode ? student.allocationFailReason.longSleeveShirt : simplifiedFailureMessage;
+                }
             }
             if (student.allocationFailReason.longSleevePants && !student.allocatedLongPantsSize) {
-                longPantsSize = isDebugMode ? student.allocationFailReason.longSleevePants : simplifiedFailureMessage;
+                if (isMissingBodyMeasurements(student.allocationFailReason.longSleevePants)) {
+                    // 缺少三圍資料時，尺寸格保留空白
+                    longPantsSize = '';
+                } else {
+                    longPantsSize = isDebugMode ? student.allocationFailReason.longSleevePants : simplifiedFailureMessage;
+                }
             }
         }
 
@@ -2870,22 +2895,26 @@ function createStudentDetailWorksheet() {
         // 確定是否為女生
         const isFemale = student.gender === '女';
         
-        // 處理件數欄位 - 分配失敗時顯示需求件數
+        // 處理件數欄位 - 分配失敗時顯示需求件數，缺少三圍資料時保留需求件數
         const shortShirtCount = student.allocatedShirtSize ? 
             (student.shortSleeveShirtCount || 1) : 
-            (shortShirtSize === simplifiedFailureMessage ? (student.shortSleeveShirtCount || 0) : '-');
+            (shortShirtSize === simplifiedFailureMessage ? (student.shortSleeveShirtCount || 0) : 
+             shortShirtSize === '' ? (student.shortSleeveShirtCount || 0) : '-');
             
         const shortPantsCount = student.allocatedPantsSize ? 
             (student.shortSleevePantsCount || 1) : 
-            (shortPantsSize === simplifiedFailureMessage ? (student.shortSleevePantsCount || 0) : '-');
+            (shortPantsSize === simplifiedFailureMessage ? (student.shortSleevePantsCount || 0) : 
+             shortPantsSize === '' ? (student.shortSleevePantsCount || 0) : '-');
             
         const longShirtCount = student.allocatedLongShirtSize ? 
             (student.longSleeveShirtCount || 1) : 
-            (longShirtSize === simplifiedFailureMessage ? (student.longSleeveShirtCount || 0) : '-');
+            (longShirtSize === simplifiedFailureMessage ? (student.longSleeveShirtCount || 0) : 
+             longShirtSize === '' ? (student.longSleeveShirtCount || 0) : '-');
             
         const longPantsCount = student.allocatedLongPantsSize ? 
             (student.longSleevePantsCount || 1) : 
-            (longPantsSize === simplifiedFailureMessage ? (student.longSleevePantsCount || 0) : '-');
+            (longPantsSize === simplifiedFailureMessage ? (student.longSleevePantsCount || 0) : 
+             longPantsSize === '' ? (student.longSleevePantsCount || 0) : '-');
 
         // 創建行數據，為女生添加樣式
         const rowData = [
