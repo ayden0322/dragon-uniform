@@ -111,6 +111,7 @@ export function setupTabEvents() {
                 updateSizeTable('shortSleevePants');
                 updateSizeTable('longSleeveShirt');
                 updateSizeTable('longSleevePants');
+                updateSizeTable('jacket');
             } catch (error) {
                 console.error('更新調整頁面失敗:', error);
             }
@@ -232,7 +233,7 @@ function setupSizeTabsEvents() {
 export function updateAllocationRatios() {
     try {
         // 直接從 demandData 獲取需求數量
-        const types = ['shortSleeveShirt', 'shortSleevePants', 'longSleeveShirt', 'longSleevePants'];
+        const types = ['shortSleeveShirt', 'shortSleevePants', 'longSleeveShirt', 'longSleevePants', 'jacket'];
         
         for (const type of types) {
             // 更新需求數量顯示
@@ -252,6 +253,7 @@ export function updateAllocationRatios() {
         updateSizeTable('shortSleevePants');
         updateSizeTable('longSleeveShirt');
         updateSizeTable('longSleevePants');
+        updateSizeTable('jacket');
     } catch (error) {
         console.error('更新預留比率時發生錯誤:', error);
     }

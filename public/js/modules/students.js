@@ -12,7 +12,8 @@ export let demandData = {
     shortSleeveShirt: { totalDemand: 0, sizeCount: {} },
     shortSleevePants: { totalDemand: 0, sizeCount: {} },
     longSleeveShirt: { totalDemand: 0, sizeCount: {} },
-    longSleevePants: { totalDemand: 0, sizeCount: {} }
+    longSleevePants: { totalDemand: 0, sizeCount: {} },
+    jacket: { totalDemand: 0, sizeCount: {} }
 };
 
 /**
@@ -30,7 +31,7 @@ export function initStudentTable() {
     // 建立表格內容
     if (studentData.length === 0) {
         const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="12" class="text-center">無資料，請匯入或手動新增</td>';
+        row.innerHTML = '<td colspan="13" class="text-center">無資料，請匯入或手動新增</td>';
         tbody.appendChild(row);
     } else {
         studentData.forEach((student, index) => {
@@ -48,6 +49,7 @@ export function initStudentTable() {
                 <td>${student.shortSleevePantsCount || ''}</td>
                 <td>${student.longSleeveShirtCount || ''}</td>
                 <td>${student.longSleevePantsCount || ''}</td>
+                <td>${student.jacketCount || ''}</td>
             `;
             tbody.appendChild(row);
         });
@@ -69,7 +71,8 @@ export function clearStudentData() {
             shortSleeveShirt: { totalDemand: 0, sizeCount: {} },
             shortSleevePants: { totalDemand: 0, sizeCount: {} },
             longSleeveShirt: { totalDemand: 0, sizeCount: {} },
-            longSleevePants: { totalDemand: 0, sizeCount: {} }
+            longSleevePants: { totalDemand: 0, sizeCount: {} },
+            jacket: { totalDemand: 0, sizeCount: {} }
         };
         
         // 儲存到本地儲存
@@ -182,6 +185,11 @@ export function handleExcelImport(file) {
                             case '長袖褲子件數':
                                 // 空白視為0，有數值時才轉換
                                 student.longSleevePantsCount = cellValue && !isNaN(parseInt(cellValue)) ? Math.max(0, parseInt(cellValue)) : 0;
+                                break;
+                            case '外套':
+                            case '外套件數':
+                                // 空白視為0，有數值時才轉換
+                                student.jacketCount = cellValue && !isNaN(parseInt(cellValue)) ? Math.max(0, parseInt(cellValue)) : 0;
                                 break;
                             default:
                                 break;
@@ -347,7 +355,8 @@ export function initializeDemandData() {
         shortSleeveShirt: { totalDemand: 0, sizeCount: {} },
         shortSleevePants: { totalDemand: 0, sizeCount: {} },
         longSleeveShirt: { totalDemand: 0, sizeCount: {} },
-        longSleevePants: { totalDemand: 0, sizeCount: {} }
+        longSleevePants: { totalDemand: 0, sizeCount: {} },
+        jacket: { totalDemand: 0, sizeCount: {} }
     };
     
     // 為每個尺寸初始化計數器
@@ -356,6 +365,7 @@ export function initializeDemandData() {
         demandData.shortSleevePants.sizeCount[size] = 0;
         demandData.longSleeveShirt.sizeCount[size] = 0;
         demandData.longSleevePants.sizeCount[size] = 0;
+        demandData.jacket.sizeCount[size] = 0;
     });
     
     // 統計各制服類型的總需求數量（只統計三圍完整的學生）
@@ -382,6 +392,10 @@ export function initializeDemandData() {
         const longPantsCount = parseInt(student.longSleevePantsCount) || 0;
         demandData.longSleevePants.totalDemand += longPantsCount;
         
+        // 外套需求
+        const jacketCount = parseInt(student.jacketCount) || 0;
+        demandData.jacket.totalDemand += jacketCount;
+        
         // 如果還需要維持尺寸統計，可以使用計算的尺寸搭配件數來更新
         if (student._calculatedShirtSize && SIZES.includes(student._calculatedShirtSize)) {
             // 短袖上衣尺寸統計
@@ -405,6 +419,7 @@ export function initializeDemandData() {
     demandData.shortSleevePants.totalDemand = parseInt(demandData.shortSleevePants.totalDemand) || 0;
     demandData.longSleeveShirt.totalDemand = parseInt(demandData.longSleeveShirt.totalDemand) || 0;
     demandData.longSleevePants.totalDemand = parseInt(demandData.longSleevePants.totalDemand) || 0;
+    demandData.jacket.totalDemand = parseInt(demandData.jacket.totalDemand) || 0;
 
     // 儲存更新後的需求資料
     saveToLocalStorage('demandData', demandData);
@@ -440,7 +455,7 @@ export function sortStudentData() {
 export function exportStudentData() {
     const headers = [
         '班級', '號碼', '姓名', '性別', '胸圍', '腰圍', '褲長',
-        '短衣件數', '短褲件數', '長衣件數', '長褲件數'
+        '短衣件數', '短褲件數', '長衣件數', '長褲件數', '外套件數'
     ];
     
     const rows = studentData.map(student => [
@@ -454,7 +469,8 @@ export function exportStudentData() {
         student.shortSleeveShirtCount || '',
         student.shortSleevePantsCount || '',
         student.longSleeveShirtCount || '',
-        student.longSleevePantsCount || ''
+        student.longSleevePantsCount || '',
+        student.jacketCount || ''
     ]);
     
     const now = new Date();
@@ -470,12 +486,12 @@ export function exportStudentData() {
 export function downloadTemplate() {
     const headers = [
         '班級', '號碼', '姓名', '性別', '胸圍', '腰圍', '褲長', 
-        '短衣件數', '短褲件數', '長衣件數', '長褲件數'
+        '短衣件數', '短褲件數', '長衣件數', '長褲件數', '外套件數'
     ];
     
     const rows = [
-        ['七年一班', '1', '測試學生', '男', '85', '70', '75', '1', '1', '1', '1'],
-        ['七年一班', '2', '測試學生2', '女', '83', '68', '72', '1', '1', '1', '1']
+        ['七年一班', '1', '測試學生', '男', '85', '70', '75', '1', '1', '1', '1', '1'],
+        ['七年一班', '2', '測試學生2', '女', '83', '68', '72', '1', '1', '1', '1', '1']
     ];
     
     downloadExcel('制服尺寸匯入範本.xlsx', headers, rows);
@@ -505,12 +521,14 @@ export function updateAdjustmentPage() {
             shortSleeveShirt: document.getElementById('shortSleeveShirtDemand'),
             shortSleevePants: document.getElementById('shortSleevePantsDemand'),
             longSleeveShirt: document.getElementById('longSleeveShirtDemand'),
-            longSleevePants: document.getElementById('longSleevePantsDemand')
+            longSleevePants: document.getElementById('longSleevePantsDemand'),
+            jacket: document.getElementById('jacketDemand')
         };
         
         // 如果需求資料不存在，先初始化
         if (!demandData.shortSleeveShirt || !demandData.shortSleevePants || 
-            !demandData.longSleeveShirt || !demandData.longSleevePants) {
+            !demandData.longSleeveShirt || !demandData.longSleevePants ||
+            !demandData.jacket) {
             initializeDemandData();
         }
         

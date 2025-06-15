@@ -9,7 +9,8 @@ export let inventoryData = {
     shortSleeveShirt: {},
     shortSleevePants: {},
     longSleeveShirt: {},
-    longSleevePants: {}
+    longSleevePants: {},
+    jacket: {}
 };
 
 // 新增: 可分配數量與預留數量的手動調整資料
@@ -17,7 +18,8 @@ export let manualAdjustments = {
     shortSleeveShirt: {},
     shortSleevePants: {},
     longSleeveShirt: {},
-    longSleevePants: {}
+    longSleevePants: {},
+    jacket: {}
 };
 
 /**
@@ -41,7 +43,8 @@ export function initInventoryTables() {
         'shortSleeveShirtTable',
         'shortSleevePantsTable',
         'longSleeveShirtTable',
-        'longSleevePantsTable'
+        'longSleevePantsTable',
+        'jacketTable'
     ];
 
     tableIds.forEach(tableId => {
@@ -353,7 +356,13 @@ export function updateSizeTable(type) {
     
     // 計算該品項的總庫存
     for (const size of SIZES) {
-        if (!inventoryData[type][size]) continue;
+        // 確保庫存資料結構存在
+        if (!inventoryData[type]) {
+            inventoryData[type] = {};
+        }
+        if (!inventoryData[type][size]) {
+            inventoryData[type][size] = { total: 0, allocatable: 0, reserved: 0 };
+        }
         itemTotalInventory += inventoryData[type][size].total || 0;
     }
     
@@ -373,7 +382,13 @@ export function updateSizeTable(type) {
 
     // 為每個尺寸添加行
     for (const size of SIZES) {
-        if (!inventoryData[type][size]) continue;
+        // 確保庫存資料結構存在
+        if (!inventoryData[type]) {
+            inventoryData[type] = {};
+        }
+        if (!inventoryData[type][size]) {
+            inventoryData[type][size] = { total: 0, allocatable: 0, reserved: 0 };
+        }
         
         const data = inventoryData[type][size];
         const total = data.total || 0;
@@ -974,11 +989,36 @@ export function loadInventoryAndAdjustments() {
         inventoryData = savedInventory;
     }
     
+    // 確保所有類型和尺寸的庫存結構完整
+    ensureInventoryStructure();
+    
     // 載入手動調整資料
     const savedAdjustments = loadFromLocalStorage('manualAdjustments', null);
     if (savedAdjustments) {
         manualAdjustments = savedAdjustments;
     }
+}
+
+/**
+ * 確保庫存資料結構完整
+ */
+function ensureInventoryStructure() {
+    const types = ['shortSleeveShirt', 'shortSleevePants', 'longSleeveShirt', 'longSleevePants', 'jacket'];
+    
+    types.forEach(type => {
+        if (!inventoryData[type]) {
+            inventoryData[type] = {};
+        }
+        
+        SIZES.forEach(size => {
+            if (!inventoryData[type][size]) {
+                inventoryData[type][size] = { total: 0, allocatable: 0, reserved: 0 };
+            }
+        });
+    });
+    
+    // 保存更新後的結構
+    saveToLocalStorage('inventoryData', inventoryData);
 }
 
 /**
@@ -1039,16 +1079,18 @@ function importInventoryFromWorkbook(workbook) {
         shortSleeveShirt: {},
         shortSleevePants: {},
         longSleeveShirt: {},
-        longSleevePants: {}
+        longSleevePants: {},
+        jacket: {}
     };
     
     // 檢查工作表是否存在
-    const sheetNames = ['短衣', '短褲', '長衣', '長褲'];
+    const sheetNames = ['短衣', '短褲', '長衣', '長褲', '外套'];
     const typeMapping = {
         '短衣': 'shortSleeveShirt',
         '短褲': 'shortSleevePants',
         '長衣': 'longSleeveShirt',
-        '長褲': 'longSleevePants'
+        '長褲': 'longSleevePants',
+        '外套': 'jacket'
     };
     
     let importedSheets = 0;
@@ -1096,7 +1138,8 @@ function importInventoryFromWorkbook(workbook) {
         'shortSleeveShirtTable',
         'shortSleevePantsTable', 
         'longSleeveShirtTable',
-        'longSleevePantsTable'
+        'longSleevePantsTable',
+        'jacketTable'
     ];
     
     // 重新初始化表格，確保結構正確
@@ -1132,7 +1175,8 @@ function downloadInventoryTemplate() {
         { name: '短衣', id: 'shortSleeveShirt' },
         { name: '短褲', id: 'shortSleevePants' },
         { name: '長衣', id: 'longSleeveShirt' },
-        { name: '長褲', id: 'longSleevePants' }
+        { name: '長褲', id: 'longSleevePants' },
+        { name: '外套', id: 'jacket' }
     ];
     
     // 為每種類型創建範本數據
@@ -1176,11 +1220,12 @@ export function clearInventoryData() {
         shortSleeveShirt: {},
         shortSleevePants: {},
         longSleeveShirt: {},
-        longSleevePants: {}
+        longSleevePants: {},
+        jacket: {}
     };
     
     // 初始化每種類型的每個尺寸
-    const types = ['shortSleeveShirt', 'shortSleevePants', 'longSleeveShirt', 'longSleevePants'];
+    const types = ['shortSleeveShirt', 'shortSleevePants', 'longSleeveShirt', 'longSleevePants', 'jacket'];
     types.forEach(type => {
         SIZES.forEach(size => {
             if (!inventoryData[type]) {
@@ -1195,7 +1240,8 @@ export function clearInventoryData() {
         shortSleeveShirt: {},
         shortSleevePants: {},
         longSleeveShirt: {},
-        longSleevePants: {}
+        longSleevePants: {},
+        jacket: {}
     };
     
     // 保存到本地存儲
@@ -1207,7 +1253,8 @@ export function clearInventoryData() {
         'shortSleeveShirtTable',
         'shortSleevePantsTable',
         'longSleeveShirtTable',
-        'longSleevePantsTable'
+        'longSleevePantsTable',
+        'jacketTable'
     ];
     
     tableIds.forEach(tableId => {

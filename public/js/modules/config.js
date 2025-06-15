@@ -25,7 +25,8 @@ export const ALLOCATION_DISPLAY_MODES = {
     shortSleeveShirt: SIZE_DISPLAY_MODES.both,
     shortSleevePants: SIZE_DISPLAY_MODES.both,
     longSleeveShirt: SIZE_DISPLAY_MODES.both,
-    longSleevePants: SIZE_DISPLAY_MODES.both
+    longSleevePants: SIZE_DISPLAY_MODES.both,
+    jacket: SIZE_DISPLAY_MODES.both
 };
 
 // 設置尺寸顯示模式
@@ -91,7 +92,8 @@ export const UNIFORM_TYPES = {
     shortSleeveShirt: '短衣',
     shortSleevePants: '短褲',
     longSleeveShirt: '長衣',
-    longSleevePants: '長褲'
+    longSleevePants: '長褲',
+    jacket: '外套'
 };
 
 // 學校配置
@@ -163,6 +165,7 @@ export function tableIdToInventoryType(tableId) {
         case 'shortSleevePantsTable': return 'shortSleevePants';
         case 'longSleeveShirtTable': return 'longSleeveShirt';
         case 'longSleevePantsTable': return 'longSleevePants';
+        case 'jacketTable': return 'jacket';
         default: return null;
     }
 }
@@ -174,6 +177,7 @@ export function inventoryTypeToTableId(type) {
         case 'shortSleevePants': return 'shortSleevePantsTable';
         case 'longSleeveShirt': return 'longSleeveShirtTable';
         case 'longSleevePants': return 'longSleevePantsTable';
+        case 'jacket': return 'jacketTable';
         default: return null;
     }
 }
@@ -190,6 +194,11 @@ export const RESERVATION_RATIOS = {
     },
     longSleeveShirt: { // 長袖上衣
         type: 'fixed',
+        defaultRatio: 0.10, // 10%
+        displayName: '固定預留比例'
+    },
+    jacket: { // 外套
+        type: 'fixed', // 固定比例
         defaultRatio: 0.10, // 10%
         displayName: '固定預留比例'
     },

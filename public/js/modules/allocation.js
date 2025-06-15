@@ -10,7 +10,8 @@ const lastAllocationStatus = {
     shortSleeveShirt: {},
     shortSleevePants: {},
     longSleeveShirt: {},
-    longSleevePants: {}
+    longSleevePants: {},
+    jacket: {}
 };
 
 // 新的統一褲子腰圍映射表
@@ -79,6 +80,14 @@ export let allocationStats = {
         pantsSizeAdjusted: 0
     },
     longSleevePants: {
+        allocated: 0,
+        exact: 0,
+        different: 0,
+        failed: 0,
+        special: 0,
+        pantsSizeAdjusted: 0
+    },
+    jacket: {
         allocated: 0,
         exact: 0,
         different: 0,
@@ -193,7 +202,8 @@ export async function startAllocation() {
             { type: 'shortSleeveShirt', name: '短衣', field: 'shortSleeveShirtCount' },
             { type: 'shortSleevePants', name: '短褲', field: 'shortSleevePantsCount' },
             { type: 'longSleeveShirt', name: '長衣', field: 'longSleeveShirtCount' },
-            { type: 'longSleevePants', name: '長褲', field: 'longSleevePantsCount' }
+            { type: 'longSleevePants', name: '長褲', field: 'longSleevePantsCount' },
+            { type: 'jacket', name: '外套', field: 'jacketCount' }
         ];
         
         for (const { type, name, field } of uniformTypes) {
@@ -249,6 +259,14 @@ export async function startAllocation() {
             console.log('短衣分配完成');
         } catch (error) {
             console.error('短衣分配過程發生錯誤:', error);
+            allocationSuccess = false;
+        }
+        
+        try {
+            await allocateJackets();
+            console.log('外套分配完成');
+        } catch (error) {
+            console.error('外套分配過程發生錯誤:', error);
             allocationSuccess = false;
         }
         
@@ -318,12 +336,14 @@ export function resetAllocation() {
             student.allocatedPantsSize = '';
             student.allocatedLongShirtSize = '';
             student.allocatedLongPantsSize = '';
+            student.allocatedJacketSize = '';
             
             // 清除特殊分配標記
             student.isSpecialShirtAllocation = false;
             student.isSpecialPantsAllocation = false;
             student.isSpecialLongShirtAllocation = false;
             student.isSpecialLongPantsAllocation = false;
+            student.isSpecialJacketAllocation = false;
             
             // 清除褲長調整標記
             student.isPantsLengthAdjusted = false;
@@ -397,6 +417,13 @@ export function resetAllocation() {
  */
 export async function allocateShortSleeveShirts() {
     return allocateShortShirts('shortSleeveShirt', 'allocatedShirtSize', 'isSpecialShirtAllocation');
+}
+
+/**
+ * 分配外套
+ */
+export async function allocateJackets() {
+    return allocateJacketsWithLogic();
 }
 
 /**
@@ -1936,7 +1963,8 @@ function getUniformTypeName(uniformType) {
         shortSleeveShirt: '短衣',
         shortSleevePants: '短褲',
         longSleeveShirt: '長衣',
-        longSleevePants: '長褲'
+        longSleevePants: '長褲',
+        jacket: '外套'
     };
     return typeNames[uniformType] || uniformType;
 }
@@ -2025,6 +2053,14 @@ function updateStudentDetailedResults() {
                             <option value="number">僅尺碼</option>
                         </select>
                     </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-0 me-1 small">外套：</label>
+                        <select id="jacketDisplayMode" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                            <option value="both">尺寸及尺碼</option>
+                            <option value="size">僅尺寸</option>
+                            <option value="number">僅尺碼</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
@@ -2047,6 +2083,8 @@ function updateStudentDetailedResults() {
                             <th>長衣尺寸</th>
                             <th class="count-column">件數</th>
                             <th>長褲尺寸</th>
+                            <th class="count-column">件數</th>
+                            <th>外套尺寸</th>
                             <th class="count-column">件數</th>
                         </tr>
                     </thead>
@@ -2077,7 +2115,8 @@ function updateStudentDetailedResults() {
             { id: 'shortSleeveShirtDisplayMode', uniformType: 'shortSleeveShirt' },
             { id: 'shortSleevePantsDisplayMode', uniformType: 'shortSleevePants' },
             { id: 'longSleeveShirtDisplayMode', uniformType: 'longSleeveShirt' },
-            { id: 'longSleevePantsDisplayMode', uniformType: 'longSleevePants' }
+            { id: 'longSleevePantsDisplayMode', uniformType: 'longSleevePants' },
+            { id: 'jacketDisplayMode', uniformType: 'jacket' }
         ];
         
         displayModeSelectors.forEach(({ id, uniformType }) => {
@@ -2141,10 +2180,12 @@ function updateStudentDetailedResults() {
         const shortPantsFailReason = getDisplayFailReason(student.allocationFailReason?.shortSleevePants);
         const longShirtFailReason = getDisplayFailReason(student.allocationFailReason?.longSleeveShirt);
         const longPantsFailReason = getDisplayFailReason(student.allocationFailReason?.longSleevePants);
+        const jacketFailReason = getDisplayFailReason(student.allocationFailReason?.jacket);
         
         // 獲取新的分配標記
         let shirtMark = student.shirtAllocationMark || '';
         const longShirtMark = student.longShirtAllocationMark || '';
+        const jacketMark = student.jacketAllocationMark || '';
 
         // REMEDIAL ACTION for missing shirtMark when pants adjustment occurred
         if (student.allocatedShirtSize && !shirtMark && student.isShirtSizeAdjustedForPantsLength) {
@@ -2190,6 +2231,7 @@ function updateStudentDetailedResults() {
         const formattedLongShirtSize = student.allocatedLongShirtSize ? formatSizeByMode(student.allocatedLongShirtSize, ALLOCATION_DISPLAY_MODES.longSleeveShirt) : '-';
         // 使用已清除星號的長褲尺碼來格式化
         const formattedLongPantsSize = student.allocatedLongPantsSize ? formatSizeByMode(cleanLongPantsSize, ALLOCATION_DISPLAY_MODES.longSleevePants) : '-';
+        const formattedJacketSize = student.allocatedJacketSize ? formatSizeByMode(student.allocatedJacketSize, ALLOCATION_DISPLAY_MODES.jacket) : '-';
         
         const isDebugMode = currentSizeDisplayMode === SIZE_DISPLAY_MODES.debug;
         const simplifiedFailureMessage = '分配失敗';
@@ -2231,6 +2273,13 @@ function updateStudentDetailedResults() {
                 ${isDebugMode && student.longPantsLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥3</div>` : ''}
             </td>
             <td class="count-column">${student.longSleevePantsCount != null ? student.longSleevePantsCount : '-'}</td>
+            <td>
+                ${formattedJacketSize}${jacketMark ? `<span class="allocation-mark">${jacketMark}</span>` : ''} 
+                ${jacketFailReason ? `<div class="failure-reason">${isDebugMode ? jacketFailReason : simplifiedFailureMessage}</div>` : ''}
+                ${isDebugMode && student.isJacketSizeAdjustedForPantsLength ? `<div class="adjustment-reason text-info" style="font-size: 0.85em;">因褲長調整</div>` : ''}
+                ${isDebugMode && student.jacketLengthDeficiency ? `<div class="adjustment-reason" style="color: #e67e22; font-size: 0.85em;">褲長仍不足≥2</div>` : ''}
+            </td>
+            <td class="count-column">${student.jacketCount != null ? student.jacketCount : '-'}</td>
         `;
         tbody.appendChild(row);
     });
@@ -2759,8 +2808,9 @@ function createStudentDetailWorksheet() {
     // 添加標題行
     data.push([
         '序號', '班級', '號碼', '姓名', '性別', '胸圍', '腰圍', '褲長',
-        '短衣尺寸', '短衣件數', '短褲尺寸', '短褲件數',
-        '長衣尺寸', '長衣件數', '長褲尺寸', '長褲件數'
+                    '短衣尺寸', '短衣件數', '短褲尺寸', '短褲件數',
+            '長衣尺寸', '長衣件數', '長褲尺寸', '長褲件數',
+            '外套尺寸', '外套件數'
     ]);
 
     // 判斷是否為Debug模式
@@ -2916,6 +2966,31 @@ function createStudentDetailWorksheet() {
             (longPantsSize === simplifiedFailureMessage ? (student.longSleevePantsCount || 0) : 
              longPantsSize === '' ? (student.longSleevePantsCount || 0) : '-');
 
+        // 外套處理邏輯
+        let jacketSize = '-';
+        if (student.allocatedJacketSize) {
+            jacketSize = formatSizeByMode(student.allocatedJacketSize, ALLOCATION_DISPLAY_MODES.jacket);
+            // 如果有外套調整標記，加上標記
+            if (student.jacketAllocationMark) {
+                jacketSize += student.jacketAllocationMark;
+            }
+        } else if (student.allocationFailReason && student.allocationFailReason.jacket) {
+            const isMissingBodyMeasurements = (reason) => {
+                return reason.includes('三圍') || 
+                       reason.includes('胸圍') || 
+                       reason.includes('腰圍') || 
+                       reason.includes('褲長');
+            };
+            
+            jacketSize = isMissingBodyMeasurements(student.allocationFailReason.jacket) ? 
+                '' : simplifiedFailureMessage;
+        }
+        
+        const jacketCount = student.allocatedJacketSize ? 
+            (student.jacketCount || 1) : 
+            (jacketSize === simplifiedFailureMessage ? (student.jacketCount || 0) : 
+             jacketSize === '' ? (student.jacketCount || 0) : '-');
+
         // 創建行數據，為女生添加樣式
         const rowData = [
             { v: index + 1, t: 'n', s: isFemale ? femaleStyle : null },
@@ -2933,7 +3008,9 @@ function createStudentDetailWorksheet() {
             { v: longShirtSize, t: 's' },
             { v: longShirtCount, t: 's' },
             { v: longPantsSize, t: 's' },
-            { v: longPantsCount, t: 's' }
+            { v: longPantsCount, t: 's' },
+            { v: jacketSize, t: 's' },
+            { v: jacketCount, t: 's' }
         ];
         
         data.push(rowData);
@@ -3560,4 +3637,133 @@ function allocateLongPantsNewSystem(students, pantsInventoryData) {
         'longSleevePantsCount',
         pantsInventoryData
     );
+}
+
+/**
+ * 外套分配邏輯
+ * 基於短衣尺碼，並根據褲長差值進行調整
+ */
+function allocateJacketsWithLogic() {
+    console.log('開始分配外套');
+    
+    const jacketInventory = inventoryData.jacket || {};
+    let allocatedCount = 0;
+    let exactCount = 0;
+    let adjustedCount = 0;
+    let failedCount = 0;
+    
+    // 處理每個學生
+    for (const student of _localSortedStudentData) {
+        // 檢查學生是否需要外套
+        const jacketCount = parseInt(student.jacketCount) || 0;
+        if (jacketCount <= 0) {
+            continue;
+        }
+        
+        // 檢查是否具備參與分配的必要條件
+        if (!canParticipateInAllocation(student)) {
+            student.allocatedJacketSize = '';
+            student.allocationFailReason = student.allocationFailReason || {};
+            student.allocationFailReason.jacket = '缺少必要資料';
+            failedCount++;
+            continue;
+        }
+        
+        // 檢查是否已分配短衣
+        if (!student.allocatedShirtSize) {
+            student.allocatedJacketSize = '';
+            student.allocationFailReason = student.allocationFailReason || {};
+            student.allocationFailReason.jacket = '短衣未分配';
+            failedCount++;
+            continue;
+        }
+        
+        // 取得短衣分配的尺碼作為基礎
+        const baseSize = student.allocatedShirtSize;
+        const baseSizeNumber = getSizeNumber(baseSize);
+        const pantsLength = parseFloat(student.pantsLength) || 0;
+        
+        // 計算褲長差值
+        const lengthDifference = pantsLength - baseSizeNumber;
+        
+        // 根據性別和褲長差值決定外套尺碼
+        let targetSizeNumber = baseSizeNumber;
+        let adjustmentMark = '';
+        
+        if (student.gender === '女') {
+            // 女生：差值 ≥2 時，外套增加1碼
+            if (lengthDifference >= 2) {
+                targetSizeNumber = baseSizeNumber + 2;
+                adjustmentMark = ' ⭡';
+                adjustedCount++;
+            } else {
+                exactCount++;
+            }
+        } else {
+            // 男生：差值 1-2 時 +1碼，≥3 時 +2碼
+            if (lengthDifference >= 3) {
+                targetSizeNumber = baseSizeNumber + 4;
+                adjustmentMark = ' ⭡2';
+                adjustedCount++;
+            } else if (lengthDifference >= 1) {
+                targetSizeNumber = baseSizeNumber + 2;
+                adjustmentMark = ' ⭡';
+                adjustedCount++;
+            } else {
+                exactCount++;
+            }
+        }
+        
+        // 找到對應的尺碼
+        const targetSize = getTargetSizeFromNumber(targetSizeNumber);
+        
+        // 嘗試分配外套
+        const success = tryAllocateSize(
+            student, 
+            targetSize, 
+            jacketCount, 
+            jacketInventory, 
+            'allocatedJacketSize', 
+            'isSpecialJacketAllocation', 
+            'jacket'
+        );
+        
+        if (success) {
+            allocatedCount++;
+            student.jacketAllocationMark = adjustmentMark;
+            console.log(`外套分配成功: ${student.name} -> ${targetSize}${adjustmentMark} (基於短衣${baseSize}, 褲長${pantsLength}, 差值${lengthDifference.toFixed(1)})`);
+        } else {
+            // 分配失敗時，顯示原需求件數
+            student.allocatedJacketSize = '';
+            student.allocationFailReason = student.allocationFailReason || {};
+            student.allocationFailReason.jacket = `庫存不足 (需求: ${jacketCount}件)`;
+            failedCount++;
+            console.log(`外套分配失敗: ${student.name} -> ${targetSize} (庫存不足)`);
+        }
+    }
+    
+    // 更新統計
+    allocationStats.jacket.allocated = allocatedCount;
+    allocationStats.jacket.exact = exactCount;
+    allocationStats.jacket.different = adjustedCount;
+    allocationStats.jacket.failed = failedCount;
+    
+    console.log(`外套分配完成: 成功${allocatedCount}件, 精確${exactCount}件, 調整${adjustedCount}件, 失敗${failedCount}件`);
+    
+    // 輔助函數：從尺碼數字獲取尺碼字串
+    function getTargetSizeFromNumber(sizeNumber) {
+        if (sizeNumber <= 34) return 'XS/34';
+        if (sizeNumber <= 36) return 'S/36';
+        if (sizeNumber <= 38) return 'M/38';
+        if (sizeNumber <= 40) return 'L/40';
+        if (sizeNumber <= 42) return 'XL/42';
+        if (sizeNumber <= 44) return '2L/44';
+        if (sizeNumber <= 46) return '3L/46';
+        if (sizeNumber <= 48) return '4L/48';
+        if (sizeNumber <= 50) return '5L/50';
+        if (sizeNumber <= 52) return '6L/52';
+        if (sizeNumber <= 54) return '7L/54';
+        if (sizeNumber <= 56) return '8L/56';
+        return '9L/58';
+    }
 }
