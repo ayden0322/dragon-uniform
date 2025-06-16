@@ -2789,7 +2789,8 @@ function exportAllocationResultsToExcel() {
             { id: 'shortSleeveShirtResultTable', name: '短衣分配結果' },
             { id: 'shortSleevePantsResultTable', name: '短褲分配結果' },
             { id: 'longSleeveShirtResultTable', name: '長衣分配結果' },
-            { id: 'longSleevePantsResultTable', name: '長褲分配結果' }
+            { id: 'longSleevePantsResultTable', name: '長褲分配結果' },
+            { id: 'jacketResultTable', name: '外套分配結果' }
         ];
 
         typeWorksheets.forEach(({ id, name }) => {
@@ -2813,7 +2814,7 @@ function exportAllocationResultsToExcel() {
             }
         };
         
-        const displayModeText = `短衣${getDisplayText(ALLOCATION_DISPLAY_MODES.shortSleeveShirt)}_短褲${getDisplayText(ALLOCATION_DISPLAY_MODES.shortSleevePants)}_長衣${getDisplayText(ALLOCATION_DISPLAY_MODES.longSleeveShirt)}_長褲${getDisplayText(ALLOCATION_DISPLAY_MODES.longSleevePants)}`;
+        const displayModeText = `短衣${getDisplayText(ALLOCATION_DISPLAY_MODES.shortSleeveShirt)}_短褲${getDisplayText(ALLOCATION_DISPLAY_MODES.shortSleevePants)}_長衣${getDisplayText(ALLOCATION_DISPLAY_MODES.longSleeveShirt)}_長褲${getDisplayText(ALLOCATION_DISPLAY_MODES.longSleevePants)}_外套${getDisplayText(ALLOCATION_DISPLAY_MODES.jacket)}`;
         
         const filename = `制服分配結果_${displayModeText}_${timestamp}.xlsx`;
 
