@@ -2017,9 +2017,20 @@ function updateStudentDetailedResults() {
             
             <!-- 顯示模式控制面板 -->
             <div class="card-body pt-2 pb-2" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
-                <div class="row align-items-center justify-content-end">
+                <div class="row align-items-center">
                     <div class="col-auto">
                         <small class="text-muted">📋 顯示設定：</small>
+                    </div>
+                    <div class="col-auto">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showAllocationFailures">
+                            <label class="form-check-label small" for="showAllocationFailures">
+                                顯示分配失敗
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <div style="border-left: 1px solid #dee2e6; height: 20px; margin: 0 10px;"></div>
                     </div>
                     <div class="col-auto">
                         <label class="form-label mb-0 me-1 small">短衣：</label>
@@ -2110,6 +2121,25 @@ function updateStudentDetailedResults() {
         // 初始化顯示模式設定
         initAllocationDisplayModes();
         
+        // 設定「顯示分配失敗」勾選框的事件監聽
+        const showFailuresCheckbox = document.getElementById('showAllocationFailures');
+        if (showFailuresCheckbox) {
+            // 從localStorage載入保存的設定，預設為不顯示失敗
+            const savedShowFailures = localStorage.getItem('showAllocationFailures');
+            showFailuresCheckbox.checked = savedShowFailures === 'true'; // 預設為false，除非明確設為true
+
+            // 添加變更事件監聽
+            showFailuresCheckbox.addEventListener('change', (event) => {
+                const showFailures = event.target.checked;
+                localStorage.setItem('showAllocationFailures', showFailures.toString());
+                
+                // 重新渲染表格
+                updateStudentDetailedResults();
+                
+                showAlert(showFailures ? '已開啟分配失敗顯示' : '已隱藏分配失敗訊息', 'info');
+            });
+        }
+
         // 設定顯示模式選擇器的初始值和事件監聽
         const displayModeSelectors = [
             { id: 'shortSleeveShirtDisplayMode', uniformType: 'shortSleeveShirt' },
@@ -2166,11 +2196,21 @@ function updateStudentDetailedResults() {
         }
         // DEBUGGING CODE BLOCK END
 
+        // 檢查是否要顯示分配失敗
+        const shouldShowFailures = () => {
+            const checkbox = document.getElementById('showAllocationFailures');
+            return checkbox ? checkbox.checked : false; // 預設不顯示
+        };
+
         // 取得失敗原因，但排除跳過的情況（這些應該顯示為空白）
         const getDisplayFailReason = (reason) => {
             if (!reason) return '';
             // 如果是被跳過的情況（缺少必要資料或不需要），返回空字串，不顯示失敗信息
             if (reason.includes('缺少必要資料') || reason.includes('不需要此制服')) {
+                return '';
+            }
+            // 如果用戶選擇不顯示分配失敗，則返回空字串
+            if (!shouldShowFailures()) {
                 return '';
             }
             return reason;
@@ -2817,6 +2857,12 @@ function createStudentDetailWorksheet() {
     const isDebugMode = currentSizeDisplayMode === SIZE_DISPLAY_MODES.debug;
     // 簡化的分配失敗信息
     const simplifiedFailureMessage = '分配失敗';
+    
+    // 檢查是否要在Excel中顯示分配失敗
+    const shouldShowFailuresInExcel = () => {
+        const checkbox = document.getElementById('showAllocationFailures');
+        return checkbox ? checkbox.checked : false; // 預設不顯示
+    };
 
     // 添加學生數據
     sortedStudents.forEach((student, index) => {
@@ -2909,32 +2955,40 @@ function createStudentDetailWorksheet() {
                 if (isMissingBodyMeasurements(student.allocationFailReason.shortSleeveShirt)) {
                     // 缺少三圍資料時，尺寸格保留空白
                     shortShirtSize = '';
-                } else {
+                } else if (shouldShowFailuresInExcel()) {
                     shortShirtSize = isDebugMode ? student.allocationFailReason.shortSleeveShirt : simplifiedFailureMessage;
+                } else {
+                    shortShirtSize = ''; // 不顯示失敗時保留空白
                 }
             }
             if (student.allocationFailReason.shortSleevePants && !student.allocatedPantsSize) {
                 if (isMissingBodyMeasurements(student.allocationFailReason.shortSleevePants)) {
                     // 缺少三圍資料時，尺寸格保留空白
                     shortPantsSize = '';
-                } else {
+                } else if (shouldShowFailuresInExcel()) {
                     shortPantsSize = isDebugMode ? student.allocationFailReason.shortSleevePants : simplifiedFailureMessage;
+                } else {
+                    shortPantsSize = ''; // 不顯示失敗時保留空白
                 }
             }
             if (student.allocationFailReason.longSleeveShirt && !student.allocatedLongShirtSize) {
                 if (isMissingBodyMeasurements(student.allocationFailReason.longSleeveShirt)) {
                     // 缺少三圍資料時，尺寸格保留空白
                     longShirtSize = '';
-                } else {
+                } else if (shouldShowFailuresInExcel()) {
                     longShirtSize = isDebugMode ? student.allocationFailReason.longSleeveShirt : simplifiedFailureMessage;
+                } else {
+                    longShirtSize = ''; // 不顯示失敗時保留空白
                 }
             }
             if (student.allocationFailReason.longSleevePants && !student.allocatedLongPantsSize) {
                 if (isMissingBodyMeasurements(student.allocationFailReason.longSleevePants)) {
                     // 缺少三圍資料時，尺寸格保留空白
                     longPantsSize = '';
-                } else {
+                } else if (shouldShowFailuresInExcel()) {
                     longPantsSize = isDebugMode ? student.allocationFailReason.longSleevePants : simplifiedFailureMessage;
+                } else {
+                    longPantsSize = ''; // 不顯示失敗時保留空白
                 }
             }
         }
@@ -2948,23 +3002,19 @@ function createStudentDetailWorksheet() {
         // 處理件數欄位 - 分配失敗時顯示需求件數，缺少三圍資料時保留需求件數
         const shortShirtCount = student.allocatedShirtSize ? 
             (student.shortSleeveShirtCount || 1) : 
-            (shortShirtSize === simplifiedFailureMessage ? (student.shortSleeveShirtCount || 0) : 
-             shortShirtSize === '' ? (student.shortSleeveShirtCount || 0) : '-');
+            (student.shortSleeveShirtCount || 0);
             
         const shortPantsCount = student.allocatedPantsSize ? 
             (student.shortSleevePantsCount || 1) : 
-            (shortPantsSize === simplifiedFailureMessage ? (student.shortSleevePantsCount || 0) : 
-             shortPantsSize === '' ? (student.shortSleevePantsCount || 0) : '-');
+            (student.shortSleevePantsCount || 0);
             
         const longShirtCount = student.allocatedLongShirtSize ? 
             (student.longSleeveShirtCount || 1) : 
-            (longShirtSize === simplifiedFailureMessage ? (student.longSleeveShirtCount || 0) : 
-             longShirtSize === '' ? (student.longSleeveShirtCount || 0) : '-');
+            (student.longSleeveShirtCount || 0);
             
         const longPantsCount = student.allocatedLongPantsSize ? 
             (student.longSleevePantsCount || 1) : 
-            (longPantsSize === simplifiedFailureMessage ? (student.longSleevePantsCount || 0) : 
-             longPantsSize === '' ? (student.longSleevePantsCount || 0) : '-');
+            (student.longSleevePantsCount || 0);
 
         // 外套處理邏輯
         let jacketSize = '-';
@@ -2982,14 +3032,18 @@ function createStudentDetailWorksheet() {
                        reason.includes('褲長');
             };
             
-            jacketSize = isMissingBodyMeasurements(student.allocationFailReason.jacket) ? 
-                '' : simplifiedFailureMessage;
+            if (isMissingBodyMeasurements(student.allocationFailReason.jacket)) {
+                jacketSize = '';
+            } else if (shouldShowFailuresInExcel()) {
+                jacketSize = simplifiedFailureMessage;
+            } else {
+                jacketSize = ''; // 不顯示失敗時保留空白
+            }
         }
         
         const jacketCount = student.allocatedJacketSize ? 
             (student.jacketCount || 1) : 
-            (jacketSize === simplifiedFailureMessage ? (student.jacketCount || 0) : 
-             jacketSize === '' ? (student.jacketCount || 0) : '-');
+            (student.jacketCount || 0);
 
         // 創建行數據，為女生添加樣式
         const rowData = [
