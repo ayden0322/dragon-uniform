@@ -1,7 +1,7 @@
 {
-  "name": "student-uniform-allocation-system",
+  "name": "dragon-uniform-allocation-system",
   "version": "1.0.0",
-  "description": "學生制服自動分配系統",
+  "description": "紅龍制服自動分配系統",
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
